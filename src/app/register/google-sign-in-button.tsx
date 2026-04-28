@@ -3,21 +3,20 @@
 import {useTransition} from "react";
 import {toast} from "sonner";
 import {signIn, signOut} from "@/lib/auth-client";
-import {Button} from "@/components/ui/button";
 
 export function GoogleSignInButton({
-	                                   label = "Sign in with Google",
+	                                   label = "เข้าสู่ระบบด้วย Google",
 	                                   signOutFirst = false,
-                                   }: {
+	                                   }: {
 	label?: string;
 	signOutFirst?: boolean;
 }) {
 	const [pending, start] = useTransition();
 	return (
-		<Button
+		<button
 			type="button"
-			className="w-full"
 			disabled={pending}
+			className="w-full px-4 py-2.5 rounded-lg bg-pink-500 text-white font-semibold text-sm hover:bg-pink-600 disabled:opacity-60 transition-colors"
 			onClick={() =>
 				start(async () => {
 					if (signOutFirst) {
@@ -28,12 +27,12 @@ export function GoogleSignInButton({
 						callbackURL: "/register",
 					});
 					if (res.error) {
-						toast.error(res.error.message ?? "Sign-in failed");
+						toast.error(res.error.message ?? "เข้าสู่ระบบล้มเหลว");
 					}
 				})
 			}
 		>
-			{pending ? "Redirecting…" : label}
-		</Button>
+			{pending ? "กำลังเปลี่ยนหน้า…" : label}
+		</button>
 	);
 }

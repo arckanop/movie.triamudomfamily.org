@@ -23,30 +23,30 @@ export default async function TicketPage() {
 		<div className="flex flex-1 items-center justify-center p-6">
 			<div className="w-full max-w-md">
 				<div className="relative overflow-hidden rounded-2xl bg-zinc-100 text-zinc-900 shadow-2xl">
-					<div className="bg-gradient-to-r from-amber-400 to-rose-500 p-5">
-						<div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/90">
-							Triam Udom Suksa · Movie Night
-						</div>
-						<div className="mt-2 text-3xl font-black text-white">Your Ticket</div>
+					<div className="bg-linear-to-br from-pink-300 to-pink-600 p-5">
+						{/*<div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/90">*/}
+						{/*	เตรียมอุดม · ค่ำคืนหนัง*/}
+						{/*</div>*/}
+						<div className="mt-2 text-3xl font-black text-white">ตั๋วหนัง</div>
 					</div>
 					<div className="p-5">
 						<div className="grid grid-cols-2 gap-4 text-xs uppercase tracking-wider text-zinc-500">
 							<div>
-								<div>Name</div>
+								<div>ชื่อ-นามสกุล</div>
 								<div
 									className="mt-0.5 text-base font-semibold normal-case tracking-normal text-zinc-900">
 									{student.name} {student.surname}
 								</div>
 							</div>
 							<div>
-								<div>Class</div>
+								<div>ห้องเรียน</div>
 								<div
 									className="mt-0.5 text-base font-semibold normal-case tracking-normal text-zinc-900">
 									{student.class} · #{student.rollNumber}
 								</div>
 							</div>
 							<div className="col-span-2">
-								<div>Student ID</div>
+								<div>รหัสนักเรียน</div>
 								<div className="mt-0.5 font-mono text-base text-zinc-900 normal-case tracking-normal">
 									{student.studentId}
 								</div>
@@ -56,7 +56,7 @@ export default async function TicketPage() {
 						<div className="my-5 flex items-center gap-3">
 							<div className="h-px flex-1 bg-zinc-300"/>
 							<div className="text-xs font-medium uppercase tracking-[0.3em] text-zinc-500">
-								Show this QR at the door
+								แสดง QR นี้ที่ประตูทางเข้า
 							</div>
 							<div className="h-px flex-1 bg-zinc-300"/>
 						</div>
@@ -75,24 +75,24 @@ export default async function TicketPage() {
 							{student.seat ? (
 								<>
 									<div className="text-xs uppercase tracking-[0.3em] text-zinc-400">
-										Your seat
+										ที่นั่งของคุณ
 									</div>
 									<div className="text-3xl font-black">{student.seat.id}</div>
 								</>
 							) : (
 								<div className="text-sm">
-									Seat not yet assigned — bring this QR on movie day.
+									ยังไม่ได้กำหนดที่นั่ง — นำ QR นี้มาในวันฉาย
 								</div>
 							)}
 						</div>
 					</div>
 					<div
 						className="border-t-2 border-dashed border-zinc-300 px-5 py-3 text-[10px] uppercase tracking-[0.3em] text-zinc-500">
-						Triam Udom Family · movie.triamudomfamily.org
+						Triamudom Family
 					</div>
 				</div>
 				<div className="mt-6 flex items-center justify-between text-xs text-muted-foreground">
-					<span>Token: <span className="font-mono">{student.qrToken.slice(0, 12)}…</span></span>
+					<span>รหัส: <span className="font-mono">{student.qrToken.slice(0, 12)}…</span></span>
 					<TicketSignOutButton/>
 				</div>
 			</div>
