@@ -4,9 +4,6 @@ import {useState, useTransition} from "react";
 import {useRouter} from "next/navigation";
 import {toast} from "sonner";
 import {signIn} from "@/lib/auth-client";
-import {Button} from "@/components/ui/button";
-import {Input} from "@/components/ui/input";
-import {Label} from "@/components/ui/label";
 
 export function LoginForm() {
 	const router = useRouter();
@@ -28,32 +25,41 @@ export function LoginForm() {
 		});
 	}
 
+	const inputClass = "w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400 focus:bg-white transition";
+	const labelClass = "block text-xs font-semibold text-slate-700 mb-1.5";
+
 	return (
 		<form onSubmit={handleSubmit} className="space-y-4">
-			<div className="space-y-2">
-				<Label htmlFor="username">Username</Label>
-				<Input
+			<div>
+				<label htmlFor="username" className={labelClass}>Username</label>
+				<input
 					id="username"
+					className={inputClass}
 					autoComplete="username"
 					value={username}
 					onChange={(e) => setUsername(e.target.value)}
 					required
 				/>
 			</div>
-			<div className="space-y-2">
-				<Label htmlFor="password">Password</Label>
-				<Input
+			<div>
+				<label htmlFor="password" className={labelClass}>Password</label>
+				<input
 					id="password"
 					type="password"
+					className={inputClass}
 					autoComplete="current-password"
 					value={password}
 					onChange={(e) => setPassword(e.target.value)}
 					required
 				/>
 			</div>
-			<Button type="submit" disabled={pending} className="w-full">
+			<button
+				type="submit"
+				disabled={pending}
+				className="w-full px-4 py-2.5 rounded-lg bg-slate-900 text-white font-semibold text-sm hover:bg-slate-700 disabled:opacity-60 transition-colors"
+			>
 				{pending ? "Signing in…" : "Sign in"}
-			</Button>
+			</button>
 		</form>
 	);
 }
