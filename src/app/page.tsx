@@ -21,7 +21,7 @@ const LandingPage = () => {
 				<div className="flex flex-col items-center gap-4 max-w-xl">
 					<span className="text-xs font-mono tracking-widest text-pink-400 uppercase">Triamudom Suksa School</span>
 					<h1 className="text-5xl font-bold leading-tight tracking-tight text-slate-900">
-						ปิดโรงหนังใหญ่สุดในย่านสยาม
+						ฉลองเปิดเทอมใหม่ด้วยการปิดโรงหนัง
 					</h1>
 					<p className="text-slate-500 text-lg leading-relaxed">
 						Book your seats for the annual Triamudom family screening event. Sign in with your school Google account to get started.
