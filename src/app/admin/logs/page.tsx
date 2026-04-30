@@ -38,6 +38,86 @@ type Log = {
 	performedByUser: { username: string | null; name: string } | null;
 };
 
+type GroupedLog = {
+	isGroup: true;
+	id: string;
+	action: string;
+	note: string;
+	count: number;
+	performedAt: string;
+	performedByUser: { username: string | null; name: string } | null;
+	seatIds: string[];
+};
+
+function groupLogs(logs: Log[]): (Log | GroupedLog)[] {
+	const result: (Log | GroupedLog)[] = [];
+	let i = 0;
+	while (i < logs.length) {
+		const log = logs[i];
+		if (
+			(log.action === "BLOCKED" || log.action === "UNBLOCKED") &&
+			log.note?.endsWith("in bulk")
+		) {
+			const refTime = new Date(log.performedAt).getTime();
+			const group = [log];
+			let j = i + 1;
+			while (j < logs.length) {
+				const next = logs[j];
+				if (
+					next.action === log.action &&
+					next.note === log.note &&
+					Math.abs(new Date(next.performedAt).getTime() - refTime) < 60_000
+				) {
+					group.push(next);
+					j++;
+				} else {
+					break;
+				}
+			}
+			if (group.length > 1) {
+				result.push({
+					isGroup: true,
+					id: log.id,
+					action: log.action,
+					note: log.note,
+					count: group.length,
+					performedAt: log.performedAt,
+					performedByUser: log.performedByUser,
+					seatIds: group.map((g) => g.seatId),
+				});
+				i = j;
+			} else {
+				result.push(log);
+				i++;
+			}
+		} else {
+			result.push(log);
+			i++;
+		}
+	}
+	return result;
+}
+
+function formatSeatRange(seatIds: string[]): string {
+	if (seatIds.length === 0) return "";
+	if (seatIds.length === 1) return seatIds[0].replace("-", "");
+	const byRow = new Map<string, number[]>();
+	for (const id of seatIds) {
+		const dash = id.lastIndexOf("-");
+		const row = id.slice(0, dash);
+		const num = parseInt(id.slice(dash + 1));
+		if (!byRow.has(row)) byRow.set(row, []);
+		byRow.get(row)!.push(num);
+	}
+	return Array.from(byRow.entries())
+		.map(([row, nums]) => {
+			const min = Math.min(...nums);
+			const max = Math.max(...nums);
+			return min === max ? `${row}${min}` : `${row}${min}–${row}${max}`;
+		})
+		.join(", ");
+}
+
 const ACTIONS = ["", "BOOKED", "CANCELLED", "OVERRIDDEN", "BLOCKED", "UNBLOCKED"];
 
 export default function LogsPage() {
@@ -77,7 +157,7 @@ export default function LogsPage() {
 		].join(",");
 		const rows = logs.map((l) => {
 			const cells = [
-				new Date(l.performedAt).toISOString(),
+				new Date(l.performedAt).toLocaleString("sv-SE", {timeZone: "Asia/Bangkok"}) + "+07:00",
 				l.seatId,
 				l.action,
 				l.student?.studentId ?? "",
@@ -95,7 +175,7 @@ export default function LogsPage() {
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement("a");
 		a.href = url;
-		a.download = `booking-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+		a.download = `booking-logs-${new Date().toLocaleDateString("sv-SE", {timeZone: "Asia/Bangkok"})}.csv`;
 		a.click();
 		URL.revokeObjectURL(url);
 	}
@@ -181,30 +261,54 @@ export default function LogsPage() {
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{logs.map((l) => (
-								<TableRow key={l.id}>
-									<TableCell className="text-xs">
-										{new Date(l.performedAt).toLocaleString()}
-									</TableCell>
-									<TableCell className="font-mono text-xs">{l.seatId}</TableCell>
-									<TableCell>
-										<Badge variant="outline">{l.action}</Badge>
-									</TableCell>
-									<TableCell className="text-xs">
-										{l.student
-											? `${l.student.name} ${l.student.surname} (class ${l.student.class}, ${l.student.studentId})`
-											: "—"}
-									</TableCell>
-									<TableCell className="text-xs">
-										{l.performedByUser?.username ??
-											l.performedByUser?.name ??
-											"—"}
-									</TableCell>
-									<TableCell className="text-xs text-muted-foreground">
-										{l.note ?? ""}
-									</TableCell>
-								</TableRow>
-							))}
+							{groupLogs(logs).map((l) => {
+								if ("isGroup" in l) {
+									return (
+										<TableRow key={l.id} className="bg-zinc-900/50">
+											<TableCell className="text-xs">
+												{new Date(l.performedAt).toLocaleString(undefined, {timeZone: "Asia/Bangkok"})}
+											</TableCell>
+											<TableCell className="font-mono text-xs">
+												{formatSeatRange(l.seatIds)}
+											</TableCell>
+											<TableCell>
+												<Badge variant="outline">{l.action}</Badge>
+											</TableCell>
+											<TableCell className="text-xs text-muted-foreground">—</TableCell>
+											<TableCell className="text-xs">
+												{l.performedByUser?.username ?? l.performedByUser?.name ?? "—"}
+											</TableCell>
+											<TableCell className="text-xs text-muted-foreground">
+												{l.note}
+											</TableCell>
+										</TableRow>
+									);
+								}
+								return (
+									<TableRow key={l.id}>
+										<TableCell className="text-xs">
+											{new Date(l.performedAt).toLocaleString(undefined, {timeZone: "Asia/Bangkok"})}
+										</TableCell>
+										<TableCell className="font-mono text-xs">{l.seatId}</TableCell>
+										<TableCell>
+											<Badge variant="outline">{l.action}</Badge>
+										</TableCell>
+										<TableCell className="text-xs">
+											{l.student
+												? `${l.student.name} ${l.student.surname} (class ${l.student.class}, ${l.student.studentId})`
+												: "—"}
+										</TableCell>
+										<TableCell className="text-xs">
+											{l.performedByUser?.username ??
+												l.performedByUser?.name ??
+												"—"}
+										</TableCell>
+										<TableCell className="text-xs text-muted-foreground">
+											{l.note ?? ""}
+										</TableCell>
+									</TableRow>
+								);
+							})}
 						</TableBody>
 					</Table>
 				</CardContent>
