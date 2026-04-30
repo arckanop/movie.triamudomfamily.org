@@ -1,7 +1,6 @@
 "use client";
 
-import {useEffect, useState} from "react";
-import {toast} from "sonner";
+import {useCallback, useEffect, useState} from "react";
 import {
 	BarChart,
 	Bar,
@@ -13,19 +12,18 @@ import {
 	LineChart,
 	Line,
 } from "recharts";
-import {SeatMap, type SeatStatusMap} from "@/components/seat/seat-map";
+import {toast} from "sonner";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {Button} from "@/components/ui/button";
-import {Input} from "@/components/ui/input";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
 import {Badge} from "@/components/ui/badge";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import {ROW_LABELS, SEAT_LAYOUT} from "@/lib/seat-layout";
 
 type Analytics = {
 	summary: { total: number; available: number; booked: number; blocked: number };
@@ -33,147 +31,133 @@ type Analytics = {
 	bookingsPerStaff: { userId: string; username: string; count: number }[];
 };
 
-type SeatInfo = {
-	seat: {
-		id: string;
-		status: "AVAILABLE" | "BOOKED" | "BLOCKED";
-		bookedBy: string | null;
-		bookedAt: string | null;
-		student: {
-			id: string;
-			name: string;
-			surname: string;
-			class: string;
-			rollNumber: number;
-			studentId: string;
-		} | null;
-	};
-	performer: { id: string; name: string; username: string | null } | null;
+type RowStatus = {
+	row: string;
+	available: number;
+	blocked: number;
+	booked: number;
 };
 
-type SearchedStudent = {
+type BlockedSeat = {
 	id: string;
-	name: string;
-	surname: string;
-	class: string;
-	rollNumber: number;
-	studentId: string;
-	seatId: string | null;
+	row: string;
+	number: number;
 };
 
-export function AdminDashboard({initialStatus}: { initialStatus: SeatStatusMap }) {
-	const [analytics, setAnalytics] = useState<Analytics | null>(null);
-	const [info, setInfo] = useState<SeatInfo | null>(null);
-	const [openSeat, setOpenSeat] = useState<string | null>(null);
-	const [confirmAction, setConfirmAction] = useState<
-		| { kind: "cancel"; seatId: string }
-		| { kind: "block"; seatId: string }
-		| { kind: "unblock"; seatId: string }
-		| { kind: "override"; seatId: string; studentId: string }
-		| null
-	>(null);
-	const [search, setSearch] = useState("");
-	const [searchResults, setSearchResults] = useState<SearchedStudent[]>([]);
-	const [assignTarget, setAssignTarget] = useState<string | null>(null);
+const ROW_ORDER = ROW_LABELS.map((r) => r.row);
 
-	useEffect(() => {
-		refreshAnalytics();
+function sortRows(rows: RowStatus[]): RowStatus[] {
+	return [...rows].sort(
+		(a, b) => ROW_ORDER.indexOf(a.row) - ROW_ORDER.indexOf(b.row),
+	);
+}
+
+export function AdminDashboard() {
+	const [analytics, setAnalytics] = useState<Analytics | null>(null);
+	const [rowStatuses, setRowStatuses] = useState<RowStatus[]>([]);
+	const [selectedRow, setSelectedRow] = useState<string>("");
+	const [busy, setBusy] = useState<string | null>(null);
+	const [blockedSeats, setBlockedSeats] = useState<BlockedSeat[]>([]);
+	const [blockRow, setBlockRow] = useState("");
+	const [blockSeatNum, setBlockSeatNum] = useState("");
+	const [seatBusy, setSeatBusy] = useState<string | null>(null);
+
+	const rowSeatsMap: Record<string, number[]> = {};
+	for (const s of SEAT_LAYOUT.seats) {
+		if (!rowSeatsMap[s.row]) rowSeatsMap[s.row] = [];
+		rowSeatsMap[s.row].push(s.number);
+	}
+
+	const fetchRowStatuses = useCallback(async () => {
+		const r = await fetch("/api/seats/rows");
+		if (r.ok) {
+			const data = await r.json();
+			setRowStatuses(sortRows(data.rows));
+		}
 	}, []);
 
-	async function refreshAnalytics() {
-		const res = await fetch("/api/analytics");
-		if (res.ok) setAnalytics(await res.json());
-	}
-
-	async function loadInfo(seatId: string) {
-		setOpenSeat(seatId);
-		setInfo(null);
-		const res = await fetch(`/api/seats/${seatId}/info`);
-		if (res.ok) setInfo(await res.json());
-	}
-
-	function handleSeatClick(
-		seatId: string,
-		status: "AVAILABLE" | "BOOKED" | "BLOCKED",
-	) {
-		if (status === "AVAILABLE") {
-			setAssignTarget(seatId);
-			setSearch("");
-			setSearchResults([]);
-			return;
+	const fetchBlockedSeats = useCallback(async () => {
+		const r = await fetch("/api/seats");
+		if (r.ok) {
+			const data = await r.json();
+			const blocked: BlockedSeat[] = (data.seats as {id: string; row: string; number: number; status: string}[])
+				.filter((s) => s.status === "BLOCKED")
+				.sort((a, b) => a.id.localeCompare(b.id));
+			setBlockedSeats(blocked);
 		}
-		loadInfo(seatId);
-	}
+	}, []);
 
-	async function searchStudents(q: string) {
-		setSearch(q);
-		if (q.trim().length < 2) {
-			setSearchResults([]);
-			return;
-		}
-		const res = await fetch(`/api/students/search?q=${encodeURIComponent(q)}`);
-		if (res.ok) {
-			const data = await res.json();
-			setSearchResults(data.students);
-		}
-	}
+	useEffect(() => {
+		fetch("/api/analytics").then((r) => { if (r.ok) r.json().then(setAnalytics); });
+		fetchRowStatuses();
+		fetchBlockedSeats();
+	}, [fetchRowStatuses, fetchBlockedSeats]);
 
-	async function assignSeat(seatId: string, studentId: string) {
-		const res = await fetch("/api/bookings", {
+	async function rowAction(row: string, action: "block" | "unblock") {
+		setBusy(row + action);
+		const r = await fetch(`/api/seats/rows/${encodeURIComponent(row)}`, {
 			method: "POST",
 			headers: {"Content-Type": "application/json"},
-			body: JSON.stringify({seatId, studentId}),
+			body: JSON.stringify({action}),
 		});
-		if (res.ok) {
-			toast.success(`${seatId} assigned`);
-			setAssignTarget(null);
-			refreshAnalytics();
+		setBusy(null);
+		if (r.ok) {
+			const data = await r.json();
+			toast.success(`Row ${row}: ${data.count} seat${data.count !== 1 ? "s" : ""} ${action === "block" ? "blocked" : "unblocked"}`);
+			fetchRowStatuses();
+			fetchBlockedSeats();
 		} else {
-			const data = await res.json();
-			toast.error(data.error ?? "Booking failed");
+			toast.error(`Failed to ${action} row ${row}`);
 		}
 	}
 
-	async function applyConfirm() {
-		if (!confirmAction) return;
-		const action = confirmAction;
-		setConfirmAction(null);
-		if (action.kind === "cancel") {
-			const res = await fetch(`/api/bookings/${action.seatId}`, {
-				method: "DELETE",
-			});
-			if (res.ok) {
-				toast.success(`${action.seatId} freed`);
-				setOpenSeat(null);
-				refreshAnalytics();
-			} else toast.error("Failed");
-		} else if (action.kind === "block") {
-			const res = await fetch(`/api/seats/${action.seatId}/block`, {
-				method: "POST",
-				headers: {"Content-Type": "application/json"},
-				body: "{}",
-			});
-			if (res.ok) {
-				toast.success(`${action.seatId} blocked`);
-				setOpenSeat(null);
-				refreshAnalytics();
-			} else {
-				const data = await res.json();
-				toast.error(data.error ?? "Failed");
-			}
-		} else if (action.kind === "unblock") {
-			const res = await fetch(`/api/seats/${action.seatId}/unblock`, {
-				method: "POST",
-				headers: {"Content-Type": "application/json"},
-				body: "{}",
-			});
-			if (res.ok) {
-				toast.success(`${action.seatId} unblocked`);
-				setOpenSeat(null);
-				refreshAnalytics();
-			} else toast.error("Failed");
+	async function blockSeat() {
+		if (!blockRow || !blockSeatNum) return;
+		const id = `${blockRow}-${blockSeatNum}`;
+		setSeatBusy(id);
+		const r = await fetch(`/api/seats/${encodeURIComponent(id)}/block`, {
+			method: "POST",
+			headers: {"Content-Type": "application/json"},
+			body: "{}",
+		});
+		setSeatBusy(null);
+		if (r.ok) {
+			toast.success(`${id} blocked`);
+			setBlockRow("");
+			setBlockSeatNum("");
+			fetchBlockedSeats();
+			fetchRowStatuses();
+		} else {
+			const data = await r.json();
+			toast.error(data.error ?? `Failed to block ${id}`);
 		}
 	}
+
+	async function unblockSeat(seatId: string) {
+		setSeatBusy(seatId);
+		const r = await fetch(`/api/seats/${encodeURIComponent(seatId)}/unblock`, {
+			method: "POST",
+			headers: {"Content-Type": "application/json"},
+			body: "{}",
+		});
+		setSeatBusy(null);
+		if (r.ok) {
+			toast.success(`${seatId} unblocked`);
+			fetchBlockedSeats();
+			fetchRowStatuses();
+		} else {
+			toast.error(`Failed to unblock ${seatId}`);
+		}
+	}
+
+	const blockableRows = ROW_ORDER.filter((r) => {
+		const s = rowStatuses.find((x) => x.row === r);
+		return s && s.available > 0;
+	});
+
+	const blockedRows = sortRows(rowStatuses.filter((r) => r.blocked > 0 && r.available === 0));
+	const fullyBlockedRowSet = new Set(blockedRows.map((r) => r.row));
+	const individualBlockedSeats = blockedSeats.filter((s) => !fullyBlockedRowSet.has(s.row));
 
 	return (
 		<div className="space-y-4">
@@ -183,6 +167,7 @@ export function AdminDashboard({initialStatus}: { initialStatus: SeatStatusMap }
 				<Stat label="Booked" value={analytics?.summary.booked ?? "—"} accent="red"/>
 				<Stat label="Blocked" value={analytics?.summary.blocked ?? "—"} accent="zinc"/>
 			</div>
+
 			<div className="grid gap-4 lg:grid-cols-2">
 				<Card>
 					<CardHeader>
@@ -224,181 +209,143 @@ export function AdminDashboard({initialStatus}: { initialStatus: SeatStatusMap }
 
 			<Card>
 				<CardHeader>
-					<CardTitle>Seat map</CardTitle>
+					<div className="flex items-center justify-between">
+						<CardTitle>Row blocks</CardTitle>
+						{blockedRows.length > 0 && (
+							<Badge variant="destructive">{blockedRows.length} row{blockedRows.length !== 1 ? "s" : ""} blocked</Badge>
+						)}
+					</div>
 				</CardHeader>
-				<CardContent>
-					<SeatMap
-						initialStatus={initialStatus}
-						isAdmin
-						onSeatClick={handleSeatClick}
-					/>
+				<CardContent className="space-y-4">
+					<div className="flex items-center gap-2">
+						<Select value={selectedRow} onValueChange={setSelectedRow}>
+							<SelectTrigger className="w-40">
+								<SelectValue placeholder="Select row…"/>
+							</SelectTrigger>
+							<SelectContent>
+								{blockableRows.map((r) => (
+									<SelectItem key={r} value={r}>Row {r}</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<Button
+							variant="destructive"
+							size="sm"
+							disabled={!selectedRow || busy !== null}
+							onClick={() => { rowAction(selectedRow, "block"); setSelectedRow(""); }}
+						>
+							Block row
+						</Button>
+					</div>
+
+					{blockedRows.length === 0 ? (
+						<p className="text-sm text-muted-foreground">No rows currently blocked.</p>
+					) : (
+						<div className="space-y-2">
+							{blockedRows.map((r) => (
+								<div
+									key={r.row}
+									className="flex items-center justify-between rounded-md border border-zinc-700 bg-zinc-800/50 px-3 py-2"
+								>
+									<div className="flex items-center gap-3">
+										<span className="w-8 text-sm font-bold text-rose-400">Row {r.row}</span>
+										<div className="flex gap-3 text-xs text-muted-foreground">
+											<span className="text-rose-400">{r.blocked} blocked</span>
+											{r.booked > 0 && <span className="text-amber-400">{r.booked} booked</span>}
+											{r.available > 0 && <span className="text-emerald-400">{r.available} available</span>}
+										</div>
+									</div>
+									<Button
+										variant="outline"
+										size="sm"
+										disabled={busy === r.row + "unblock"}
+										onClick={() => rowAction(r.row, "unblock")}
+									>
+										Unblock
+									</Button>
+								</div>
+							))}
+						</div>
+					)}
 				</CardContent>
 			</Card>
 
-			<Dialog open={!!openSeat} onOpenChange={(o) => !o && setOpenSeat(null)}>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>
-							Seat {openSeat}{" "}
-							{info && (
-								<Badge variant="secondary" className="ml-2">
-									{info.seat.status}
-								</Badge>
-							)}
-						</DialogTitle>
-					</DialogHeader>
-					{info ? (
-						<div className="space-y-3 text-sm">
-							{info.seat.student && (
-								<div className="rounded-md border p-3">
-									<div className="font-medium">
-										{info.seat.student.name} {info.seat.student.surname}
-									</div>
-									<div className="text-xs text-muted-foreground">
-										Class {info.seat.student.class} · #{info.seat.student.rollNumber} ·{" "}
-										{info.seat.student.studentId}
-									</div>
-								</div>
-							)}
-							{info.seat.bookedAt && (
-								<div className="text-xs text-muted-foreground">
-									Booked by{" "}
-									<span className="font-medium text-foreground">
-                    {info.performer?.username ?? info.performer?.name ?? "unknown"}
-                  </span>{" "}
-									on {new Date(info.seat.bookedAt).toLocaleString()}
-								</div>
-							)}
-							<div className="flex flex-wrap gap-2">
-								{info.seat.status === "BOOKED" && (
-									<Button
-										variant="destructive"
-										onClick={() =>
-											setConfirmAction({kind: "cancel", seatId: info.seat.id})
-										}
-									>
-										Cancel booking
-									</Button>
-								)}
-								{info.seat.status === "AVAILABLE" && (
-									<Button
-										variant="secondary"
-										onClick={() =>
-											setConfirmAction({kind: "block", seatId: info.seat.id})
-										}
-									>
-										Block seat
-									</Button>
-								)}
-								{info.seat.status === "BLOCKED" && (
-									<Button
-										variant="secondary"
-										onClick={() =>
-											setConfirmAction({kind: "unblock", seatId: info.seat.id})
-										}
-									>
-										Unblock seat
-									</Button>
-								)}
-								{info.seat.status === "BOOKED" && (
-									<Button
-										variant="secondary"
-										onClick={() =>
-											setConfirmAction({kind: "block", seatId: info.seat.id})
-										}
-									>
-										Block (after cancelling)
-									</Button>
-								)}
-							</div>
-						</div>
-					) : (
-						<div className="text-sm text-muted-foreground">Loading…</div>
-					)}
-				</DialogContent>
-			</Dialog>
-
-			<Dialog
-				open={!!assignTarget}
-				onOpenChange={(o) => !o && setAssignTarget(null)}
-			>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>Assign seat {assignTarget}</DialogTitle>
-						<DialogDescription>
-							Search for a student by name, surname, class, or student ID.
-						</DialogDescription>
-					</DialogHeader>
-					<Input
-						autoFocus
-						placeholder="Type to search…"
-						value={search}
-						onChange={(e) => searchStudents(e.target.value)}
-					/>
-					<div className="max-h-72 space-y-1 overflow-y-auto">
-						{searchResults.map((s) => (
-							<button
-								key={s.id}
-								onClick={() => assignTarget && assignSeat(assignTarget, s.id)}
-								className="flex w-full items-center justify-between rounded-md border p-2 text-left text-sm hover:bg-accent"
-							>
-								<div>
-									<div className="font-medium">
-										{s.name} {s.surname}
-									</div>
-									<div className="text-xs text-muted-foreground">
-										Class {s.class} · #{s.rollNumber} · {s.studentId}
-									</div>
-								</div>
-								{s.seatId && (
-									<span className="text-xs text-amber-400">
-                    has seat {s.seatId}
-                  </span>
-								)}
-							</button>
-						))}
-						{search.length >= 2 && searchResults.length === 0 && (
-							<div className="text-xs text-muted-foreground">No matches.</div>
+			<Card>
+				<CardHeader>
+					<div className="flex items-center justify-between">
+						<CardTitle>Individual seat blocks</CardTitle>
+						{individualBlockedSeats.length > 0 && (
+							<Badge variant="destructive">{individualBlockedSeats.length} seat{individualBlockedSeats.length !== 1 ? "s" : ""} blocked</Badge>
 						)}
 					</div>
-				</DialogContent>
-			</Dialog>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					<div className="flex flex-wrap items-end gap-2">
+						<div className="flex flex-col gap-1">
+							<label className="text-xs text-muted-foreground">Row</label>
+							<Select value={blockRow} onValueChange={(v) => { setBlockRow(v); setBlockSeatNum(""); }}>
+								<SelectTrigger className="w-28">
+									<SelectValue placeholder="Row"/>
+								</SelectTrigger>
+								<SelectContent>
+									{ROW_ORDER.map((r) => (
+										<SelectItem key={r} value={r}>{r}</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="flex flex-col gap-1">
+							<label className="text-xs text-muted-foreground">Seat</label>
+							<Select value={blockSeatNum} onValueChange={setBlockSeatNum} disabled={!blockRow}>
+								<SelectTrigger className="w-28">
+									<SelectValue placeholder="Seat"/>
+								</SelectTrigger>
+								<SelectContent>
+									{(rowSeatsMap[blockRow] ?? []).map((n) => (
+										<SelectItem key={n} value={String(n)}>{n}</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<Button
+							variant="destructive"
+							size="sm"
+							disabled={!blockRow || !blockSeatNum || seatBusy !== null}
+							onClick={blockSeat}
+						>
+							Block seat
+						</Button>
+					</div>
 
-			<Dialog
-				open={!!confirmAction}
-				onOpenChange={(o) => !o && setConfirmAction(null)}
-			>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>Are you sure?</DialogTitle>
-						<DialogDescription>
-							{confirmAction?.kind === "cancel" &&
-								`This will cancel the booking for ${confirmAction.seatId} and free the seat.`}
-							{confirmAction?.kind === "block" &&
-								`This will block ${confirmAction.seatId}. Staff will not be able to assign it.`}
-							{confirmAction?.kind === "unblock" &&
-								`This will unblock ${confirmAction.seatId} and make it available.`}
-						</DialogDescription>
-					</DialogHeader>
-					<DialogFooter>
-						<Button variant="outline" onClick={() => setConfirmAction(null)}>
-							Cancel
-						</Button>
-						<Button variant="destructive" onClick={applyConfirm}>
-							Confirm
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
+					{individualBlockedSeats.length === 0 ? (
+						<p className="text-sm text-muted-foreground">No individual seats currently blocked.</p>
+					) : (
+						<div className="space-y-2">
+							{individualBlockedSeats.map((s) => (
+								<div
+									key={s.id}
+									className="flex items-center justify-between rounded-md border border-zinc-700 bg-zinc-800/50 px-3 py-2"
+								>
+									<span className="text-sm font-bold text-rose-400">{s.id}</span>
+									<Button
+										variant="outline"
+										size="sm"
+										disabled={seatBusy === s.id}
+										onClick={() => unblockSeat(s.id)}
+									>
+										Unblock
+									</Button>
+								</div>
+							))}
+						</div>
+					)}
+				</CardContent>
+			</Card>
 		</div>
 	);
 }
 
-function Stat({
-	              label,
-	              value,
-	              accent,
-              }: {
+function Stat({label, value, accent}: {
 	label: string;
 	value: React.ReactNode;
 	accent?: "green" | "red" | "zinc";
@@ -414,9 +361,7 @@ function Stat({
 	return (
 		<Card>
 			<CardContent className="p-4">
-				<div className="text-xs uppercase tracking-wider text-muted-foreground">
-					{label}
-				</div>
+				<div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
 				<div className={`mt-1 text-2xl font-bold ${tint}`}>{value}</div>
 			</CardContent>
 		</Card>
