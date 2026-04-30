@@ -1,4 +1,4 @@
-export type SeatType = "premium" | "standard" | "gold" | "vip" | "front";
+export type SeatType = "normal" | "honeymoon" | "privilege_plus" | "privilege_normal" | "vip" | "premium" | "balcony";
 export type SeatSection = "left" | "right" | "center";
 
 export type SeatDef = {
@@ -11,157 +11,241 @@ export type SeatDef = {
 	gridRow: number;
 };
 
-const GRID_COLS = 28;
+// Grid layout: col 1 = left label, cols 2–47 = seats (46 cols), col 48 = right label.
+// Corridor runs vertically between cols 24–25 (center of seat area).
+const GRID_COLS = 48;
+
+type BlockSpec = {
+	start: number;
+	count: number;
+	type?: SeatType;
+	section?: SeatSection;
+	phantom?: boolean; // advances seat counter without placing a physical seat
+};
 
 type RowSpec = {
 	row: string;
 	type: SeatType;
-	leftCount: number;
-	rightCount: number;
-	leftStart?: number;
-	rightStart?: number;
-	centerCount?: number;
-	centerStart?: number;
+	blocks: BlockSpec[];
 };
 
+// ── Main floor ──────────────────────────────────────────────────────────────
+
 const MAIN_ROWS: RowSpec[] = [
-	{row: "X", type: "premium", leftCount: 13, rightCount: 13},
-	{row: "W", type: "premium", leftCount: 13, rightCount: 13},
-	{row: "V", type: "premium", leftCount: 13, rightCount: 13},
-	{row: "U", type: "premium", leftCount: 13, rightCount: 13},
-	{row: "T", type: "premium", leftCount: 13, rightCount: 13},
-	{row: "S", type: "premium", leftCount: 13, rightCount: 13},
-	{row: "R", type: "premium", leftCount: 13, rightCount: 13},
-	{row: "Q", type: "premium", leftCount: 13, rightCount: 13},
-	{row: "P", type: "premium", leftCount: 13, rightCount: 13},
-	{row: "O", type: "premium", leftCount: 13, rightCount: 13},
-	{row: "N", type: "premium", leftCount: 13, rightCount: 13},
-	{row: "M", type: "standard", leftCount: 11, rightCount: 11},
-	{row: "L", type: "standard", leftCount: 11, rightCount: 11},
-	{row: "K", type: "standard", leftCount: 11, rightCount: 11},
-	{row: "J", type: "standard", leftCount: 11, rightCount: 11},
-	{row: "I", type: "standard", leftCount: 11, rightCount: 11},
-	{row: "H", type: "standard", leftCount: 11, rightCount: 11},
-	{row: "G", type: "standard", leftCount: 11, rightCount: 11},
-	{row: "F", type: "standard", leftCount: 11, rightCount: 11, centerCount: 4, centerStart: 13},
-	{row: "E", type: "standard", leftCount: 11, rightCount: 11, centerCount: 4, centerStart: 13},
-	{row: "D", type: "standard", leftCount: 11, rightCount: 11},
-	{row: "C", type: "gold", leftCount: 9, rightCount: 0},
-	{row: "B", type: "gold", leftCount: 8, rightCount: 0},
-	{row: "A", type: "gold", leftCount: 7, rightCount: 0},
-	{row: "AA", type: "gold", leftCount: 0, rightCount: 9, rightStart: 17},
-	{row: "VP", type: "vip", leftCount: 4, rightCount: 0},
+	// X: 32 seats (16 + 16), corridor between seats 16 and 17 (cols 24–25)
+	{
+		row: "X", type: "normal", blocks: [
+			{start: 8, count: 16, section: "left"},
+			{start: 26, count: 16, section: "right"},
+		],
+	},
+	// W: 40 seats (20 + 20)
+	{
+		row: "W", type: "normal", blocks: [
+			{start: 4, count: 20, section: "left"},
+			{start: 26, count: 20, section: "right"},
+		],
+	},
+	// V: 40 seats (20 + 20)
+	{
+		row: "V", type: "normal", blocks: [
+			{start: 4, count: 20, section: "left"},
+			{start: 26, count: 20, section: "right"},
+		],
+	},
+	// U–N: 44 seats (22 + 22)
+	...(["U", "T", "S", "R", "Q", "P", "O", "N"] as const).map((row) => ({
+		row, type: "normal" as SeatType, blocks: [
+			{start: 2, count: 22, section: "left" as SeatSection},
+			{start: 26, count: 22, section: "right" as SeatSection},
+		],
+	})),
+	// M–G: seats 1–15 + 20–34 = Honeymoon, seats 16–19 = Privilege+
+	...(["M", "L", "K", "J", "I", "H", "G"] as const).map((row) => ({
+		row, type: "honeymoon" as SeatType, blocks: [
+			{start: 2, count: 15, section: "left" as SeatSection},
+			{start: 20, count: 2, section: "center" as SeatSection, type: "privilege_plus" as SeatType},
+			{start: 29, count: 2, section: "center" as SeatSection, type: "privilege_plus" as SeatType},
+			{start: 33, count: 15, section: "right" as SeatSection},
+		],
+	})),
+	// F: 41 seats — seats 1–15 + 27–41 = Honeymoon, seats 16–26 = Privilege+
+	{
+		row: "F", type: "honeymoon", blocks: [
+			{start: 2, count: 15, section: "left"},
+			{start: 20, count: 11, section: "center", type: "privilege_plus" as SeatType},
+			{start: 33, count: 15, section: "right"},
+		],
+	},
+	// E: 41 seats — same as F
+	{
+		row: "E", type: "honeymoon", blocks: [
+			{start: 2, count: 15, section: "left"},
+			{start: 20, count: 11, section: "center", type: "privilege_plus" as SeatType},
+			{start: 33, count: 15, section: "right"},
+		],
+	},
+	// D: 39 seats — seats 1–15 + 27–39 = Honeymoon, seats 16–26 = Privilege+
+	{
+		row: "D", type: "honeymoon", blocks: [
+			{start: 2, count: 15, section: "left"},
+			{start: 20, count: 11, section: "center", type: "privilege_plus" as SeatType},
+			{start: 33, count: 13, section: "right"},
+		],
+	},
+	// C: 27 seats — Privilege Normal
+	{
+		row: "C", type: "privilege_normal", blocks: [
+			{start: 2, count: 15, section: "left"},
+			{start: 33, count: 12, section: "right"},
+		],
+	},
+	// B: 26 seats — Privilege Normal
+	{
+		row: "B", type: "privilege_normal", blocks: [
+			{start: 2, count: 15, section: "left"},
+			{start: 33, count: 11, section: "right"},
+		],
+	},
+	// A: 25 seats — Privilege Normal
+	{
+		row: "A", type: "privilege_normal", blocks: [
+			{start: 2, count: 15, section: "left"},
+			{start: 33, count: 10, section: "right"},
+		],
+	},
+	// AA: 10 seats — Privilege Normal (AA1 aligns with A16 at col 33)
+	{
+		row: "AA", type: "privilege_normal", blocks: [
+			{start: 33, count: 10, section: "right"},
+		],
+	},
+	// VP: 8 seats in 4 pairs (Opera Chair) — VIP
+	// VP2=FH1(col4), VP3=FH3(col6), VP5=FH6(col9), VP7=FH9(col12)
+	{
+		row: "VP", type: "vip", blocks: [
+			{start: 3, count: 2, section: "left"},
+			{start: 6, count: 2, section: "left"},
+			{start: 9, count: 2, section: "left"},
+			{start: 12, count: 2, section: "left"},
+		],
+	},
 ];
 
+// ── 2nd floor (balcony) ──────────────────────────────────────────────────────
+
 const FRONT_ROWS: RowSpec[] = [
-	{row: "FH", type: "front", leftCount: 7, rightCount: 7, leftStart: 4, rightStart: 18},
-	{row: "FG", type: "front", leftCount: 7, rightCount: 7, leftStart: 4, rightStart: 18},
-	{row: "FF", type: "front", leftCount: 8, rightCount: 8, leftStart: 3, rightStart: 18},
-	{row: "FE", type: "front", leftCount: 8, rightCount: 8, leftStart: 3, rightStart: 18},
-	{row: "FD", type: "front", leftCount: 8, rightCount: 8, leftStart: 3, rightStart: 18},
-	{row: "FC", type: "front", leftCount: 8, rightCount: 8, leftStart: 3, rightStart: 18},
-	{row: "FB", type: "front", leftCount: 8, rightCount: 8, leftStart: 3, rightStart: 18},
-	{row: "FA", type: "front", leftCount: 7, rightCount: 7, leftStart: 4, rightStart: 18},
+	// FH: 28 seats — Balcony (left block start=4 so FH1 aligns with VP2)
+	// right start=31: FH15 aligns with FG24 at col 31
+	{
+		row: "FH", type: "balcony", blocks: [
+			{start: 4, count: 14, section: "left"},
+			{start: 31, count: 14, section: "right"},
+		],
+	},
+	// FG: seats 1–14 + 24–37 = Balcony, seats 15–23 = Premium
+	// left start=4: FG13 aligns with A15 at col 16
+	// center start=20: FG15 aligns with FF-FA seat 12 at col 20; FG20/FG21 adjacent at cols 25/26
+	// center start=26: FG21 aligns with FF-FA seat 16 at col 26
+	// right start=31: FG24 aligns with FF-FA seat 21 at col 31
+	{
+		row: "FG", type: "balcony", blocks: [
+			{start: 4, count: 14, section: "left"},
+			{start: 20, count: 6, section: "center", type: "premium" as SeatType},
+			{start: 26, count: 3, section: "center", type: "premium" as SeatType},
+			{start: 31, count: 14, section: "right"},
+		],
+	},
+	// FF–FA: 30 seats each — Balcony
+	// left start=9 → FF-FA seat 12 at col 20 (aligns with FG15)
+	// right start=26 → FF-FA seat 16 at col 26 (aligns with FG21)
+	...(["FF", "FE", "FD", "FC", "FB", "FA"] as const).map((row) => ({
+		row, type: "balcony" as SeatType, blocks: [
+			{start: 9, count: 15, section: "left" as SeatSection},
+			{start: 26, count: 15, section: "right" as SeatSection},
+		],
+	})),
 ];
+
+// ── Build helpers ────────────────────────────────────────────────────────────
 
 function expandRow(spec: RowSpec, gridRow: number): SeatDef[] {
 	const seats: SeatDef[] = [];
-	const leftStart = spec.leftStart ?? 1;
-	const rightStart = spec.rightStart ?? GRID_COLS - spec.rightCount + 1;
-
 	let n = 1;
-	for (let i = 0; i < spec.leftCount; i++) {
-		const col = leftStart + i;
-		seats.push({
-			id: `${spec.row}-${n}`,
-			row: spec.row,
-			number: n,
-			section: "left",
-			type: spec.type,
-			col,
-			gridRow,
-		});
-		n++;
-	}
-
-	if (spec.centerCount && spec.centerStart) {
-		for (let i = 0; i < spec.centerCount; i++) {
-			const col = spec.centerStart + i;
+	for (const block of spec.blocks) {
+		if (block.phantom) {
+			n += block.count;
+			continue;
+		}
+		for (let i = 0; i < block.count; i++) {
 			seats.push({
 				id: `${spec.row}-${n}`,
 				row: spec.row,
 				number: n,
-				section: "center",
-				type: spec.type,
-				col,
+				section: block.section ?? "center",
+				type: block.type ?? spec.type,
+				col: block.start + i,
 				gridRow,
 			});
 			n++;
 		}
 	}
-
-	for (let i = 0; i < spec.rightCount; i++) {
-		const col = rightStart + i;
-		seats.push({
-			id: `${spec.row}-${n}`,
-			row: spec.row,
-			number: n,
-			section: "right",
-			type: spec.type,
-			col,
-			gridRow,
-		});
-		n++;
-	}
-
 	return seats;
 }
 
-function buildLayout(): { seats: SeatDef[]; rows: number; cols: number; mainRowCount: number } {
+export type SectionSeparator = { gridRow: number; label: string };
+
+function buildLayout(): {
+	seats: SeatDef[];
+	rows: number;
+	cols: number;
+	mainRowCount: number;
+	separators: SectionSeparator[];
+	rowLabels: { row: string; gridRow: number }[];
+} {
 	const all: SeatDef[] = [];
+	const separators: SectionSeparator[] = [];
+	const rowLabels: { row: string; gridRow: number }[] = [];
 	let gridRow = 1;
 	for (const spec of MAIN_ROWS) {
+		if (spec.row === "M") {
+			separators.push({gridRow, label: "Honeymoon Zone"});
+			gridRow++;
+		}
 		all.push(...expandRow(spec, gridRow));
+		rowLabels.push({row: spec.row, gridRow});
 		gridRow++;
 	}
 	const mainRowCount = gridRow - 1;
-	gridRow += 1;
+	gridRow += 1; // visual gap between main and 2nd floor
 	for (const spec of FRONT_ROWS) {
 		all.push(...expandRow(spec, gridRow));
+		rowLabels.push({row: spec.row, gridRow});
 		gridRow++;
 	}
-	return {seats: all, rows: gridRow - 1, cols: GRID_COLS, mainRowCount};
+	return {seats: all, rows: gridRow - 1, cols: GRID_COLS, mainRowCount, separators, rowLabels};
 }
 
 export const SEAT_LAYOUT = buildLayout();
 
-export const ROW_LABELS: { row: string; gridRow: number }[] = (() => {
-	const out: { row: string; gridRow: number }[] = [];
-	let gridRow = 1;
-	for (const spec of MAIN_ROWS) {
-		out.push({row: spec.row, gridRow});
-		gridRow++;
-	}
-	gridRow += 1;
-	for (const spec of FRONT_ROWS) {
-		out.push({row: spec.row, gridRow});
-		gridRow++;
-	}
-	return out;
-})();
+export const ROW_LABELS = SEAT_LAYOUT.rowLabels;
 
 export const SEAT_TYPE_COLORS: Record<SeatType, string> = {
+	normal: "#6366f1",
+	honeymoon: "#f43f5e",
+	privilege_plus: "#f97316",
+	privilege_normal: "#eab308",
+	vip: "#ec4899",
 	premium: "#dc2626",
-	standard: "#7c3aed",
-	gold: "#eab308",
-	vip: "#94a3b8",
-	front: "#7c3aed",
+	balcony: "#10b981",
 };
 
 export const SEAT_TYPE_LABELS: Record<SeatType, string> = {
-	premium: "Premium",
-	standard: "Standard",
-	gold: "Gold",
+	normal: "Normal",
+	honeymoon: "Honeymoon",
+	privilege_plus: "Privilege+",
+	privilege_normal: "Privilege",
 	vip: "VIP",
-	front: "Front",
+	premium: "Premium",
+	balcony: "Balcony",
 };
