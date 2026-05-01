@@ -20,78 +20,94 @@ export default async function TicketPage() {
 	});
 
 	return (
-		<div className="flex flex-1 items-center justify-center p-6">
-			<div className="w-full max-w-md">
-				<div className="relative overflow-hidden rounded-2xl bg-zinc-100 text-zinc-900 shadow-2xl">
-					<div className="bg-linear-to-br from-pink-300 to-pink-600 p-5">
-						{/*<div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/90">*/}
-						{/*	เตรียมอุดม · ค่ำคืนหนัง*/}
-						{/*</div>*/}
-						<div className="mt-2 text-3xl font-black text-white">ตั๋วหนัง</div>
+		<div className="flex flex-1 items-center justify-center p-6 relative overflow-hidden">
+			<div
+				className="pointer-events-none absolute inset-0"
+				style={{background: "radial-gradient(ellipse 70% 50% at 50% 0%, oklch(0.92 0.04 350 / 0.5) 0%, transparent 70%)"}}
+			/>
+
+			<div className="relative w-full max-w-md">
+				{/* Ticket card */}
+				<div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/80">
+					{/* Header stripe */}
+					<div className="bg-linear-to-br from-pink-400 to-rose-600 px-6 py-5">
+						<div className="text-xs font-semibold uppercase tracking-[0.25em] text-pink-100/80">
+							Triamudom Family · Movie Night
+						</div>
+						<div className="mt-1.5 text-3xl font-black text-white tracking-tight">ตั๋วหนัง</div>
 					</div>
-					<div className="p-5">
-						<div className="grid grid-cols-2 gap-4 text-xs uppercase tracking-wider text-zinc-500">
+
+					{/* Info grid */}
+					<div className="px-6 pt-5 pb-3">
+						<div className="grid grid-cols-2 gap-x-4 gap-y-4">
 							<div>
-								<div>ชื่อ-นามสกุล</div>
-								<div
-									className="mt-0.5 text-base font-semibold normal-case tracking-normal text-zinc-900">
+								<div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">ชื่อ-นามสกุล</div>
+								<div className="mt-0.5 text-base font-semibold text-slate-900">
 									{student.name} {student.surname}
 								</div>
 							</div>
 							<div>
-								<div>ห้องเรียน</div>
-								<div
-									className="mt-0.5 text-base font-semibold normal-case tracking-normal text-zinc-900">
+								<div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">ห้องเรียน</div>
+								<div className="mt-0.5 text-base font-semibold text-slate-900">
 									{student.class} · #{student.rollNumber}
 								</div>
 							</div>
 							<div className="col-span-2">
-								<div>รหัสนักเรียน</div>
-								<div className="mt-0.5 font-mono text-base text-zinc-900 normal-case tracking-normal">
+								<div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">รหัสนักเรียน</div>
+								<div className="mt-0.5 font-mono text-base text-slate-900">
 									{student.studentId}
 								</div>
 							</div>
 						</div>
+					</div>
 
-						<div className="my-5 flex items-center gap-3">
-							<div className="h-px flex-1 bg-zinc-300"/>
-							<div className="text-xs font-medium uppercase tracking-[0.3em] text-zinc-500">
-								แสดง QR นี้ที่ประตูทางเข้า
-							</div>
-							<div className="h-px flex-1 bg-zinc-300"/>
+					{/* Perforated divider */}
+					<div className="relative my-2 flex items-center px-3">
+						<div className="-ml-6 h-5 w-5 shrink-0 rounded-full bg-slate-50 border-r border-slate-200"/>
+						<div className="flex-1 border-t-2 border-dashed border-slate-200 mx-1"/>
+						<div className="-mr-6 h-5 w-5 shrink-0 rounded-full bg-slate-50 border-l border-slate-200"/>
+					</div>
+
+					{/* QR section */}
+					<div className="px-6 pb-5">
+						<div className="mb-4 text-center text-[10px] font-semibold uppercase tracking-[0.25em] text-slate-400">
+							แสดง QR นี้ที่ประตูทางเข้า
 						</div>
-
 						<div className="flex justify-center">
-							<img
-								src={qrDataUrl}
-								alt="Your ticket QR code"
-								className="rounded-lg border border-zinc-200"
-								width={240}
-								height={240}
-							/>
+							<div className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
+								<img
+									src={qrDataUrl}
+									alt="Your ticket QR code"
+									className="block rounded-lg"
+									width={220}
+									height={220}
+								/>
+							</div>
 						</div>
 
-						<div className="mt-5 rounded-lg bg-zinc-900 p-3 text-center text-white">
+						{/* Seat display */}
+						<div className="mt-4 rounded-xl border border-slate-200 bg-slate-900 p-4 text-center">
 							{student.seat ? (
 								<>
-									<div className="text-xs uppercase tracking-[0.3em] text-zinc-400">
-										ที่นั่งของคุณ
-									</div>
-									<div className="text-3xl font-black">{student.seat.id}</div>
+									<div className="text-[10px] uppercase tracking-[0.3em] text-slate-400">ที่นั่งของคุณ</div>
+									<div className="mt-1 text-4xl font-black text-white">{student.seat.id}</div>
 								</>
 							) : (
-								<div className="text-sm">
+								<div className="text-sm text-slate-400">
 									ยังไม่ได้กำหนดที่นั่ง — นำ QR นี้มาในวันฉาย
 								</div>
 							)}
 						</div>
 					</div>
-					<div
-						className="border-t-2 border-dashed border-zinc-300 px-5 py-3 text-[10px] uppercase tracking-[0.3em] text-zinc-500">
+
+					{/* Footer */}
+					<div className="border-t-2 border-dashed border-slate-200 px-6 py-3 text-[10px] uppercase tracking-[0.3em] text-slate-400">
 						Triamudom Family
 					</div>
 				</div>
-				<div className="mt-6 flex items-center justify-between text-xs text-muted-foreground">
+
+				{/* Below-card actions */}
+				<div className="mt-5 flex items-center justify-between text-xs text-slate-400">
 					<span>รหัส: <span className="font-mono">{student.qrToken.slice(0, 12)}…</span></span>
 					<TicketSignOutButton/>
 				</div>

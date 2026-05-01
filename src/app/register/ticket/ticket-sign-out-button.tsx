@@ -10,7 +10,7 @@ export function TicketSignOutButton() {
 	return (
 		<button
 			type="button"
-			className="text-xs underline underline-offset-4 hover:text-foreground"
+			className="text-xs text-slate-400 underline underline-offset-4 hover:text-slate-700 transition-colors"
 			disabled={pending}
 			onClick={() =>
 				start(async () => {
@@ -19,7 +19,7 @@ export function TicketSignOutButton() {
 				})
 			}
 		>
-			{pending ? "Signing out…" : "Sign out"}
+			{pending ? "กำลังออกจากระบบ…" : "ออกจากระบบ"}
 		</button>
 	);
 }
