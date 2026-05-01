@@ -23,14 +23,15 @@
 	--input: oklch(1 0 0 / 18%);
 	--ring: oklch(0.556 0 0);
 	--radius: 0.625rem;
-	--seat-available: #22c55e;
 	--seat-booked: #ef4444;
 	--seat-blocked: #4b5563;
-	--seat-premium: #dc2626;
-	--seat-standard: #7c3aed;
-	--seat-gold: #eab308;
+	--seat-normal: #6366f1;
+	--seat-honeymoon: #f43f5e;
+	--seat-privilege-plus: #f97316;
+	--seat-privilege-normal: #eab308;
 	--seat-vip: #ec4899;
-	--seat-front: #2563eb;
+	--seat-premium: #dc2626;
+	--seat-balcony: #10b981;
 
 	--font-sans: var(--font-ibm-plex-sans-thai, system-ui);
 	--font-mono: var(--font-jetbrains-mono, monospace);
