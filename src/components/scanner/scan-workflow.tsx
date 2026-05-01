@@ -2,7 +2,7 @@
 
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {toast} from "sonner";
-import {Trash2, X, Check} from "lucide-react";
+import {Trash2, X, Check, Pencil} from "lucide-react";
 import {QrScanner} from "@/components/scanner/qr-scanner";
 import {SeatMap, type SeatStatusMap} from "@/components/seat/seat-map";
 import {Button} from "@/components/ui/button";
@@ -40,6 +40,8 @@ export function ScanWorkflow({
 	const [scanned, setScanned] = useState<ScannedStudent[]>([]);
 	const [activeStudentId, setActiveStudentId] = useState<string | null>(null);
 	const [phase, setPhase] = useState<"scanning" | "seating">("scanning");
+	const [countdown, setCountdown] = useState<number | null>(null);
+	const [lastAssignment, setLastAssignment] = useState<ScannedStudent | null>(null);
 	const [overrideContext, setOverrideContext] = useState<{
 		seatId: string;
 		studentId: string;
@@ -47,6 +49,19 @@ export function ScanWorkflow({
 	} | null>(null);
 
 	const lastScanAt = useRef(0);
+
+	useEffect(() => {
+		if (countdown === null) return;
+		if (countdown === 0) {
+			setScanned([]);
+			setActiveStudentId(null);
+			setPhase("scanning");
+			setCountdown(null);
+			return;
+		}
+		const t = setTimeout(() => setCountdown((c) => (c !== null ? c - 1 : null)), 1000);
+		return () => clearTimeout(t);
+	}, [countdown]);
 
 	const handleScan = useCallback(
 		async (token: string) => {
@@ -74,6 +89,7 @@ export function ScanWorkflow({
 					}
 					toast.success(`Scanned: ${s.name} ${s.surname}`);
 					if (mode === "single") {
+						setLastAssignment(null);
 						setPhase("seating");
 						setActiveStudentId(s.id);
 						return [s];
@@ -143,6 +159,10 @@ export function ScanWorkflow({
 		const idx = scanned.findIndex((s) => s.id === studentId);
 		if (idx >= 0 && idx + 1 < scanned.length) {
 			setActiveStudentId(scanned[idx + 1].id);
+		} else if (mode === "single") {
+			const student = scanned.find((s) => s.id === studentId);
+			if (student) setLastAssignment({...student, seatId});
+			setCountdown(3);
 		}
 		return true;
 	}
@@ -196,6 +216,8 @@ export function ScanWorkflow({
 		setScanned([]);
 		setActiveStudentId(null);
 		setPhase("scanning");
+		setCountdown(null);
+		setLastAssignment(null);
 	}
 
 	return (
@@ -207,6 +229,8 @@ export function ScanWorkflow({
 					setScanned([]);
 					setActiveStudentId(null);
 					setPhase("scanning");
+					setCountdown(null);
+					setLastAssignment(null);
 				}}
 			>
 				<TabsList>
@@ -215,17 +239,53 @@ export function ScanWorkflow({
 				</TabsList>
 				<TabsContent value="single" className="mt-4">
 					{phase === "scanning" ? (
-						<Card>
-							<CardHeader>
-								<CardTitle>Scan one student</CardTitle>
-							</CardHeader>
-							<CardContent className="flex flex-col items-center gap-3">
-								<QrScanner onScan={handleScan}/>
-								<p className="text-xs text-muted-foreground">
-									Hold the student&apos;s QR steady in the frame.
-								</p>
-							</CardContent>
-						</Card>
+						<div className="space-y-3">
+							{lastAssignment && (
+								<div className="flex items-center justify-between rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-3 text-sm">
+									<div className="flex items-center gap-2 text-green-400">
+										<Check className="h-4 w-4 shrink-0"/>
+										<span>
+											Seat <span className="font-mono font-semibold">{lastAssignment.seatId}</span> saved for{" "}
+											<span className="font-medium">{lastAssignment.name} {lastAssignment.surname}</span>
+										</span>
+									</div>
+									<div className="flex items-center gap-2">
+										<Button
+											variant="outline"
+											size="sm"
+											className="gap-1.5"
+											onClick={() => {
+												setScanned([lastAssignment]);
+												setActiveStudentId(lastAssignment.id);
+												setPhase("seating");
+												setLastAssignment(null);
+											}}
+										>
+											<Pencil className="h-3.5 w-3.5"/>
+											Edit seat
+										</Button>
+										<button
+											onClick={() => setLastAssignment(null)}
+											className="text-muted-foreground hover:text-foreground"
+											aria-label="Dismiss"
+										>
+											<X className="h-4 w-4"/>
+										</button>
+									</div>
+								</div>
+							)}
+							<Card>
+								<CardHeader>
+									<CardTitle>Scan one student</CardTitle>
+								</CardHeader>
+								<CardContent className="flex flex-col items-center gap-3">
+									<QrScanner onScan={handleScan}/>
+									<p className="text-xs text-muted-foreground">
+										Hold the student&apos;s QR steady in the frame.
+									</p>
+								</CardContent>
+							</Card>
+						</div>
 					) : (
 						<SeatingPanel
 							scanned={scanned}
@@ -235,7 +295,15 @@ export function ScanWorkflow({
 							ownedSeatIds={ownedSeatIds}
 							onSeatClick={handleSeatClick}
 							onFinish={finishSession}
+							onDoneNow={() => {
+								setScanned([]);
+								setActiveStudentId(null);
+								setPhase("scanning");
+								setCountdown(null);
+							}}
 							isAdmin={isAdmin}
+							countdown={countdown}
+							onCancelCountdown={() => setCountdown(null)}
 						/>
 					)}
 				</TabsContent>
@@ -366,7 +434,10 @@ function SeatingPanel({
 	                      ownedSeatIds,
 	                      onSeatClick,
 	                      onFinish,
+	                      onDoneNow,
 	                      isAdmin,
+	                      countdown,
+	                      onCancelCountdown,
                       }: {
 	scanned: ScannedStudent[];
 	activeStudentId: string | null;
@@ -375,10 +446,40 @@ function SeatingPanel({
 	ownedSeatIds: string[];
 	onSeatClick: (seat: string, status: "AVAILABLE" | "BOOKED" | "BLOCKED") => void;
 	onFinish: () => void;
+	onDoneNow?: () => void;
 	isAdmin: boolean;
+	countdown?: number | null;
+	onCancelCountdown?: () => void;
 }) {
+	const assignedSeat = scanned.find((s) => s.id === activeStudentId)?.seatId;
+
 	return (
 		<div className="space-y-4">
+			{countdown !== null && countdown !== undefined && (
+				<div className="flex items-center justify-between rounded-lg border border-primary/40 bg-primary/10 px-4 py-3 text-sm">
+					<div className="flex items-center gap-2">
+						<span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+							{countdown}
+						</span>
+						<span>
+							Returning to scanner
+							{assignedSeat ? (
+								<> — seat <span className="font-mono font-semibold">{assignedSeat}</span> saved</>
+							) : null}
+						</span>
+					</div>
+					<div className="flex gap-2">
+						<Button variant="outline" size="sm" onClick={onDoneNow ?? onFinish} className="gap-1.5">
+							<Check className="h-3.5 w-3.5"/>
+							Done now
+						</Button>
+						<Button variant="outline" size="sm" onClick={onCancelCountdown} className="gap-1.5">
+							<Pencil className="h-3.5 w-3.5"/>
+							Edit seat
+						</Button>
+					</div>
+				</div>
+			)}
 			<div className="flex flex-wrap items-center gap-2">
 				{scanned.map((s) => (
 					<button
