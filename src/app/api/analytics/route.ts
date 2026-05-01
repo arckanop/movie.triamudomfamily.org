@@ -34,10 +34,11 @@ export async function GET() {
 
 	const userById = new Map(staffUsers.map((u) => [u.id, u]));
 
-	// Bookings per hour (UTC truncated)
+	// Bookings per hour (GMT+07:00)
 	const perHour = new Map<string, number>();
 	for (const l of bookingLogs) {
-		const d = new Date(l.performedAt);
+		// Shift UTC to GMT+7 then read as UTC to get local hour buckets
+		const d = new Date(new Date(l.performedAt).getTime() + 7 * 60 * 60 * 1000);
 		const key = `${d.getUTCFullYear()}-${(d.getUTCMonth() + 1).toString().padStart(2, "0")}-${d.getUTCDate().toString().padStart(2, "0")} ${d.getUTCHours().toString().padStart(2, "0")}:00`;
 		perHour.set(key, (perHour.get(key) ?? 0) + 1);
 	}
