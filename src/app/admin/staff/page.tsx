@@ -198,7 +198,7 @@ export default function StaffManagementPage() {
 										</Badge>
 									</TableCell>
 									<TableCell className="text-xs text-muted-foreground">
-										{new Date(s.createdAt).toLocaleString(undefined, {timeZone: "Asia/Bangkok"})}
+										{new Date(s.createdAt).toLocaleString("en-GB", {timeZone: "Asia/Bangkok"})}
 									</TableCell>
 									<TableCell className="text-right">
 										<Button variant="ghost" size="sm" onClick={() => resetPassword(s)}>

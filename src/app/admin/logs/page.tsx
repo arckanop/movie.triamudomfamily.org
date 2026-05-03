@@ -266,7 +266,7 @@ export default function LogsPage() {
 									return (
 										<TableRow key={l.id} className="bg-zinc-900/50">
 											<TableCell className="text-xs">
-												{new Date(l.performedAt).toLocaleString(undefined, {timeZone: "Asia/Bangkok"})}
+												{new Date(l.performedAt).toLocaleString("en-GB", {timeZone: "Asia/Bangkok"})}
 											</TableCell>
 											<TableCell className="font-mono text-xs">
 												{formatSeatRange(l.seatIds)}
@@ -287,7 +287,7 @@ export default function LogsPage() {
 								return (
 									<TableRow key={l.id}>
 										<TableCell className="text-xs">
-											{new Date(l.performedAt).toLocaleString(undefined, {timeZone: "Asia/Bangkok"})}
+											{new Date(l.performedAt).toLocaleString("en-GB", {timeZone: "Asia/Bangkok"})}
 										</TableCell>
 										<TableCell className="font-mono text-xs">{l.seatId}</TableCell>
 										<TableCell>

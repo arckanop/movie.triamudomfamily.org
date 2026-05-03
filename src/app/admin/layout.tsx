@@ -2,6 +2,7 @@ import {redirect} from "next/navigation";
 import {getSession} from "@/server/session";
 import {prisma} from "@/server/prisma";
 import {PortalShell} from "@/components/portal-shell";
+import {DashboardSettingsProvider, DashboardSettingsButton} from "./dashboard-settings";
 
 export default async function AdminLayout({
 	                                          children,
@@ -16,8 +17,10 @@ export default async function AdminLayout({
 	});
 	if (!user || user.role !== "ADMIN") redirect("/login");
 	return (
-		<PortalShell role="ADMIN" username={user.username ?? user.name}>
-			{children}
-		</PortalShell>
+		<DashboardSettingsProvider>
+			<PortalShell role="ADMIN" username={user.username ?? user.name} settingsSlot={<DashboardSettingsButton/>}>
+				{children}
+			</PortalShell>
+		</DashboardSettingsProvider>
 	);
 }

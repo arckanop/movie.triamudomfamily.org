@@ -61,6 +61,7 @@ export function AdminSeatMap({initialStatus}: { initialStatus: SeatStatusMap }) 
 	const [assignBlocked, setAssignBlocked] = useState(false);
 	const [confirmLoading, setConfirmLoading] = useState(false);
 	const [confirmSuccess, setConfirmSuccess] = useState(false);
+	const [moveConfirm, setMoveConfirm] = useState<{ student: SearchedStudent; targetSeat: string } | null>(null);
 
 	async function loadInfo(seatId: string) {
 		setOpenSeat(seatId);
@@ -217,7 +218,7 @@ export function AdminSeatMap({initialStatus}: { initialStatus: SeatStatusMap }) 
 									<span className="font-medium text-foreground">
 										{info.performer?.username ?? info.performer?.name ?? "unknown"}
 									</span>{" "}
-									on {new Date(info.seat.bookedAt).toLocaleString(undefined, {timeZone: "Asia/Bangkok"})}
+									on {new Date(info.seat.bookedAt).toLocaleString("en-GB", {timeZone: "Asia/Bangkok"})}
 								</div>
 							)}
 							<div className="flex flex-wrap gap-2 w-full">
@@ -262,50 +263,88 @@ export function AdminSeatMap({initialStatus}: { initialStatus: SeatStatusMap }) 
 				</DialogContent>
 			</Dialog>
 
-			<Dialog open={!!assignTarget} onOpenChange={(o) => !o && setAssignTarget(null)}>
+			<Dialog open={!!assignTarget} onOpenChange={(o) => { if (!o) { setAssignTarget(null); setMoveConfirm(null); } }}>
 				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>Assign seat {assignTarget}</DialogTitle>
-						<DialogDescription>
-							Search for a student by name, surname, class, or student ID.
-						</DialogDescription>
-					</DialogHeader>
-					<Button
-						variant="destructive"
-						className="w-full"
-						disabled={blockingAssign || assignBlocked}
-						onClick={blockAssignTarget}
-					>
-						{blockingAssign ? "Blocking…" : assignBlocked ? "Blocked" : "Block seat"}
-					</Button>
-					<Input
-						autoFocus
-						placeholder="Type to search…"
-						value={search}
-						onChange={(e) => searchStudents(e.target.value)}
-					/>
-					<div className="max-h-72 space-y-1 overflow-y-auto">
-						{searchResults.map((s) => (
-							<button
-								key={s.id}
-								onClick={() => assignTarget && assignSeat(assignTarget, s.id)}
-								className="flex w-full items-center justify-between rounded-md border p-2 text-left text-sm hover:bg-accent"
+					{moveConfirm ? (
+						<>
+							<DialogHeader>
+								<DialogTitle>Move seat?</DialogTitle>
+								<DialogDescription>
+									<span className="font-medium text-foreground">
+										{moveConfirm.student.name} {moveConfirm.student.surname}
+									</span>
+									{" "}is currently in seat{" "}
+									<span className="font-mono font-medium text-amber-400">{moveConfirm.student.seatId}</span>.
+									Move them to seat{" "}
+									<span className="font-mono font-medium text-emerald-400">{moveConfirm.targetSeat}</span>?
+									Their old seat will be freed.
+								</DialogDescription>
+							</DialogHeader>
+							<DialogFooter>
+								<Button variant="outline" onClick={() => setMoveConfirm(null)}>Back</Button>
+								<Button onClick={() => { assignSeat(moveConfirm.targetSeat, moveConfirm.student.id); setMoveConfirm(null); }}>
+									Move seat
+								</Button>
+							</DialogFooter>
+						</>
+					) : (
+						<>
+							<DialogHeader>
+								<DialogTitle>Assign seat {assignTarget}</DialogTitle>
+								<DialogDescription>
+									Search for a student by name, surname, class, or student ID.
+								</DialogDescription>
+							</DialogHeader>
+							<Button
+								variant="destructive"
+								className="w-full"
+								disabled={blockingAssign || assignBlocked}
+								onClick={blockAssignTarget}
 							>
-								<div>
-									<div className="font-medium">{s.name} {s.surname}</div>
-									<div className="text-xs text-muted-foreground">
-										Class {s.class} · #{s.rollNumber} · {s.studentId}
+								{blockingAssign ? "Blocking…" : assignBlocked ? "Blocked" : "Block seat"}
+							</Button>
+							<Input
+								autoFocus
+								placeholder="Type to search…"
+								value={search}
+								onChange={(e) => searchStudents(e.target.value)}
+							/>
+							<div className="max-h-72 space-y-1 overflow-y-auto">
+								{searchResults.map((s) => (
+									<div key={s.id} className="flex items-center justify-between rounded-md border p-2 text-sm">
+										<div>
+											<div className="font-medium">{s.name} {s.surname}</div>
+											<div className="text-xs text-muted-foreground">
+												Class {s.class} · #{s.rollNumber} · {s.studentId}
+											</div>
+											{s.seatId && (
+												<div className="text-xs text-amber-400">Currently in seat {s.seatId}</div>
+											)}
+										</div>
+										{s.seatId && s.seatId !== assignTarget ? (
+											<Button
+												size="sm"
+												variant="outline"
+												onClick={() => assignTarget && setMoveConfirm({student: s, targetSeat: assignTarget})}
+											>
+												Move here
+											</Button>
+										) : (
+											<Button
+												size="sm"
+												onClick={() => assignTarget && assignSeat(assignTarget, s.id)}
+											>
+												Assign
+											</Button>
+										)}
 									</div>
-								</div>
-								{s.seatId && (
-									<span className="text-xs text-amber-400">has seat {s.seatId}</span>
+								))}
+								{search.length >= 2 && searchResults.length === 0 && (
+									<div className="text-xs text-muted-foreground">No matches.</div>
 								)}
-							</button>
-						))}
-						{search.length >= 2 && searchResults.length === 0 && (
-							<div className="text-xs text-muted-foreground">No matches.</div>
-						)}
-					</div>
+							</div>
+						</>
+					)}
 				</DialogContent>
 			</Dialog>
 
@@ -348,6 +387,7 @@ export function AdminSeatMap({initialStatus}: { initialStatus: SeatStatusMap }) 
 					)}
 				</DialogContent>
 			</Dialog>
+
 		</>
 	);
 }
