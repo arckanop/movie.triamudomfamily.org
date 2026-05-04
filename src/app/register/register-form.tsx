@@ -48,8 +48,9 @@ export function RegisterForm({email}: {email: string}) {
 		});
 	}
 
-	const inputClass = "w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-400 focus:bg-white transition";
-	const labelClass = "block text-xs font-semibold text-slate-700 mb-1.5";
+	const inputClass =
+		"w-full rounded-lg border border-zinc-700 bg-zinc-900/50 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-pink-500/40 focus:border-pink-500 transition shadow-sm";
+	const labelClass = "block text-xs font-semibold text-zinc-400 mb-1.5";
 
 	return (
 		<form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
@@ -75,7 +76,8 @@ export function RegisterForm({email}: {email: string}) {
 			</div>
 			<div>
 				<label htmlFor="class" className={labelClass}>
-					ห้อง <span className="text-slate-400 font-normal">เช่น 070 หรือ 946</span>
+					ห้อง{" "}
+					<span className="font-normal text-zinc-500">เช่น 070 หรือ 946</span>
 				</label>
 				<input
 					id="class"
@@ -102,19 +104,32 @@ export function RegisterForm({email}: {email: string}) {
 				<label htmlFor="studentId" className={labelClass}>รหัสนักเรียน</label>
 				<input
 					id="studentId"
-					className={`${inputClass} opacity-60 cursor-not-allowed`}
+					className={`${inputClass} cursor-not-allowed opacity-50`}
 					required
 					disabled
 					value={form.studentId}
 				/>
 			</div>
-			<button
-				type="submit"
-				disabled={pending}
-				className="sm:col-span-2 w-full px-4 py-2.5 rounded-lg bg-pink-500 text-white font-semibold text-sm hover:bg-pink-600 disabled:opacity-60 transition-colors"
-			>
-				{pending ? "กำลังส่ง…" : "ยืนยันการลงทะเบียน"}
-			</button>
+
+			<div className="sm:col-span-2 pt-1">
+				<button
+					type="submit"
+					disabled={pending}
+					className="w-full rounded-lg bg-pink-500 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-pink-900/50 transition-colors hover:bg-pink-400 disabled:opacity-60"
+				>
+					{pending ? (
+						<span className="flex items-center justify-center gap-2">
+							<svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+								<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+								<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+							</svg>
+							กำลังส่ง…
+						</span>
+					) : (
+						"ยืนยันการลงทะเบียน"
+					)}
+				</button>
+			</div>
 		</form>
 	);
 }

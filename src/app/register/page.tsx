@@ -31,42 +31,42 @@ function Shell({title, description, email, children}: {
 }) {
 	return (
 		<div className="flex flex-1 flex-col">
-			<nav className="flex items-center justify-between px-6 py-3 bg-white border-b border-slate-200">
+			<nav className="flex items-center justify-between px-6 py-3 border-b border-zinc-800/60 bg-[#050509]/80 backdrop-blur-sm">
 				<Link
 					href="/"
-					className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors"
+					className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-500 hover:text-white transition-colors"
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
 					กลับหน้าหลัก
 				</Link>
 				<Link
 					href="/login"
-					className="px-3 py-1.5 rounded-md bg-slate-900 text-white text-xs font-medium hover:bg-slate-700 transition-colors"
+					className="px-3 py-1.5 rounded-md border border-zinc-700 bg-zinc-800 text-zinc-200 text-xs font-medium hover:bg-zinc-700 hover:text-white transition-colors"
 				>
 					Staff login
 				</Link>
 			</nav>
 
 			<div className="flex flex-1 items-center justify-center p-6 relative overflow-hidden">
-				{/* Subtle radial gradient background accent */}
+				{/* Pink glow from top */}
 				<div
 					className="pointer-events-none absolute inset-0"
-					style={{background: "radial-gradient(ellipse 70% 50% at 50% 0%, oklch(0.92 0.04 350 / 0.5) 0%, transparent 70%)"}}
+					style={{background: "radial-gradient(ellipse 70% 45% at 50% 0%, rgba(244,63,94,0.12) 0%, transparent 70%)"}}
 				/>
 
 				<div className="relative w-full max-w-md">
 					{/* Card */}
-					<div className="rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/80 p-8">
+					<div className="rounded-2xl border border-zinc-800 bg-[#0d0d14] shadow-2xl shadow-black/80 p-8">
 						<div className="mb-6">
-							<div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-pink-200 bg-pink-50 text-pink-500">
+							<div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-pink-900/50 bg-pink-950/40 text-pink-400">
 								<FilmIcon/>
 							</div>
-							<h1 className="text-2xl font-bold text-slate-900">{title}</h1>
-							<p className="mt-1.5 text-sm text-slate-500">{description}</p>
+							<h1 className="text-2xl font-bold text-white">{title}</h1>
+							<p className="mt-1.5 text-sm text-zinc-400">{description}</p>
 							{email && (
-								<div className="mt-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-									<span className="shrink-0 text-xs text-slate-400">บัญชี</span>
-									<span className="break-all font-mono text-sm text-slate-700">{email}</span>
+								<div className="mt-3 flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2">
+									<span className="shrink-0 text-xs text-zinc-500">บัญชี</span>
+									<span className="break-all font-mono text-sm text-zinc-200">{email}</span>
 								</div>
 							)}
 						</div>

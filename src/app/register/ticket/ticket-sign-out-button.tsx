@@ -10,7 +10,7 @@ export function TicketSignOutButton() {
 	return (
 		<button
 			type="button"
-			className="text-xs text-slate-400 underline underline-offset-4 hover:text-slate-700 transition-colors"
+			className="text-xs text-zinc-500 underline underline-offset-4 hover:text-zinc-300 transition-colors"
 			disabled={pending}
 			onClick={() =>
 				start(async () => {
