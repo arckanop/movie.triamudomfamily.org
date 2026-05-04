@@ -3,10 +3,30 @@
 import {createContext, useContext, useEffect, useRef, useState} from "react";
 import {Settings2} from "lucide-react";
 
-type ShowSettings = {bookingsPerHour: boolean; bookingsPerStaff: boolean; seatTypeBreakdown: boolean; recentBookings: boolean};
+type ShowSettings = {
+	bookingsPerHour: boolean;
+	bookingsPerStaff: boolean;
+	seatTypeBreakdown: boolean;
+	recentBookings: boolean;
+	rowOverview: boolean;
+	sectionBlocks: boolean;
+	checkinByRoom: boolean;
+	doubleBookingConflicts: boolean;
+};
+
+const DEFAULTS: ShowSettings = {
+	bookingsPerHour: false,
+	bookingsPerStaff: false,
+	seatTypeBreakdown: false,
+	recentBookings: false,
+	rowOverview: false,
+	sectionBlocks: true,
+	checkinByRoom: true,
+	doubleBookingConflicts: true,
+};
 
 const Ctx = createContext<{show: ShowSettings; toggleShow: (k: keyof ShowSettings) => void}>({
-	show: {bookingsPerHour: true, bookingsPerStaff: true, seatTypeBreakdown: true, recentBookings: true},
+	show: DEFAULTS,
 	toggleShow: () => {},
 });
 
@@ -14,9 +34,11 @@ export function DashboardSettingsProvider({children}: {children: React.ReactNode
 	const [show, setShow] = useState<ShowSettings>(() => {
 		try {
 			const parsed = JSON.parse(localStorage.getItem("dashboard-show") ?? "{}");
-			return {bookingsPerHour: parsed.bookingsPerHour ?? true, bookingsPerStaff: parsed.bookingsPerStaff ?? true, seatTypeBreakdown: parsed.seatTypeBreakdown ?? true, recentBookings: parsed.recentBookings ?? true};
+			return Object.fromEntries(
+				(Object.keys(DEFAULTS) as (keyof ShowSettings)[]).map((k) => [k, parsed[k] ?? DEFAULTS[k]]),
+			) as ShowSettings;
 		} catch {
-			return {bookingsPerHour: true, bookingsPerStaff: true, seatTypeBreakdown: true, recentBookings: true};
+			return DEFAULTS;
 		}
 	});
 
@@ -67,6 +89,16 @@ export function DashboardSettingsButton() {
 						<ToggleRow label="Bookings per staff" on={show.bookingsPerStaff} onToggle={() => toggleShow("bookingsPerStaff")}/>
 						<ToggleRow label="Seat type breakdown" on={show.seatTypeBreakdown} onToggle={() => toggleShow("seatTypeBreakdown")}/>
 						<ToggleRow label="Recent bookings" on={show.recentBookings} onToggle={() => toggleShow("recentBookings")}/>
+						<ToggleRow label="Row overview" on={show.rowOverview} onToggle={() => toggleShow("rowOverview")}/>
+					</div>
+					<p className="mb-2 mt-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Stats</p>
+					<div className="space-y-2">
+						<ToggleRow label="Check-in by room" on={show.checkinByRoom} onToggle={() => toggleShow("checkinByRoom")}/>
+						<ToggleRow label="Booking conflicts" on={show.doubleBookingConflicts} onToggle={() => toggleShow("doubleBookingConflicts")}/>
+					</div>
+					<p className="mb-2 mt-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Blocks</p>
+					<div className="space-y-2">
+						<ToggleRow label="Section blocks" on={show.sectionBlocks} onToggle={() => toggleShow("sectionBlocks")}/>
 					</div>
 				</div>
 			)}

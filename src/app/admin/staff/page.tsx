@@ -58,6 +58,7 @@ function copyText(text: string) {
 export default function StaffManagementPage() {
 	const [staff, setStaff] = useState<Staff[]>([]);
 	const [open, setOpen] = useState(false);
+	const [deleteTarget, setDeleteTarget] = useState<Staff | null>(null);
 	const [resetResult, setResetResult] = useState<{user: string; password: string} | null>(null);
 	const [createResult, setCreateResult] = useState<{user: string; password: string} | null>(null);
 	const [bulkResults, setBulkResults] = useState<BulkResult[] | null>(null);
@@ -72,7 +73,13 @@ export default function StaffManagementPage() {
 
 	async function load() {
 		const res = await fetch("/api/staff");
-		if (res.ok) setStaff((await res.json()).staff);
+		if (res.ok) {
+			const data = await res.json();
+			setStaff((data.staff as Staff[]).sort((a, b) => {
+				if (a.role !== b.role) return a.role === "ADMIN" ? -1 : 1;
+				return a.name.localeCompare(b.name);
+			}));
+		}
 	}
 
 	useEffect(() => {
@@ -137,11 +144,12 @@ export default function StaffManagementPage() {
 		load();
 	}
 
-	async function deleteStaff(id: string) {
-		if (!confirm("Delete this staff account? This cannot be undone.")) return;
-		const res = await fetch(`/api/staff/${id}`, {method: "DELETE"});
+	async function deleteStaff() {
+		if (!deleteTarget) return;
+		const res = await fetch(`/api/staff/${deleteTarget.id}`, {method: "DELETE"});
 		if (res.ok) {
 			toast.success("Deleted");
+			setDeleteTarget(null);
 			load();
 		} else {
 			const data = await res.json();
@@ -204,7 +212,7 @@ export default function StaffManagementPage() {
 										<Button variant="ghost" size="sm" onClick={() => resetPassword(s)}>
 											<KeyRound className="h-4 w-4"/> Reset
 										</Button>
-										<Button variant="ghost" size="sm" onClick={() => deleteStaff(s.id)}>
+										<Button variant="ghost" size="sm" onClick={() => setDeleteTarget(s)}>
 											<Trash2 className="h-4 w-4"/> Delete
 										</Button>
 									</TableCell>
@@ -426,6 +434,24 @@ export default function StaffManagementPage() {
 					</div>
 					<DialogFooter>
 						<Button onClick={() => setBulkResults(null)}>Done</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* Delete confirmation */}
+			<Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Delete staff account</DialogTitle>
+						<DialogDescription>
+							This will permanently delete the account for{" "}
+							<strong>{deleteTarget?.name}</strong>{" "}
+							(@{deleteTarget?.username ?? deleteTarget?.name}). This cannot be undone.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+						<Button variant="destructive" onClick={deleteStaff}>Delete</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

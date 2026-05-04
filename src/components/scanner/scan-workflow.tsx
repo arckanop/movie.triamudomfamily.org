@@ -3,6 +3,7 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {toast} from "sonner";
 import {Trash2, X, Check, Pencil} from "lucide-react";
+import {useScanAudio} from "@/lib/use-scan-audio";
 import {QrScanner} from "@/components/scanner/qr-scanner";
 import {SeatMap, type SeatStatusMap} from "@/components/seat/seat-map";
 import {Button} from "@/components/ui/button";
@@ -49,6 +50,11 @@ export function ScanWorkflow({
 	} | null>(null);
 
 	const lastScanAt = useRef(0);
+	const playSound = useScanAudio();
+	const flashIdRef = useRef(0);
+	const [flashSignal, setFlashSignal] = useState<{type: "success"|"info"|"error"; id: number}|null>(null);
+	const scannedRef = useRef(scanned);
+	useEffect(() => { scannedRef.current = scanned; }, [scanned]);
 
 	useEffect(() => {
 		if (countdown === null) return;
@@ -69,6 +75,8 @@ export function ScanWorkflow({
 			if (now - lastScanAt.current < 1500) return;
 			lastScanAt.current = now;
 			if (!token.startsWith("STU-")) {
+				playSound("error");
+				setFlashSignal({type: "error", id: ++flashIdRef.current});
 				toast.error("Not a valid student QR.");
 				return;
 			}
@@ -78,29 +86,48 @@ export function ScanWorkflow({
 				);
 				const data = await res.json();
 				if (!res.ok) {
+					playSound("error");
+					setFlashSignal({type: "error", id: ++flashIdRef.current});
 					toast.error(data.error ?? "Student not found");
 					return;
 				}
 				const s: ScannedStudent = {...data.student, qrToken: token};
-				setScanned((prev) => {
-					if (prev.some((p) => p.id === s.id)) {
-						toast.info(`${s.name} ${s.surname} already scanned.`);
-						return prev;
-					}
-					toast.success(`Scanned: ${s.name} ${s.surname}`);
-					if (mode === "single") {
-						setLastAssignment(null);
-						setPhase("seating");
-						setActiveStudentId(s.id);
-						return [s];
-					}
-					return [...prev, s];
-				});
+				const prev = scannedRef.current;
+				const existing = prev.find((p) => p.id === s.id);
+
+				if (existing) {
+					// Already in this session — switch focus so staff can reassign their seat
+					playSound("info");
+					setFlashSignal({type: "info", id: ++flashIdRef.current});
+					setActiveStudentId(s.id);
+					setPhase("seating");
+					setCountdown(null);
+					toast.info(
+						existing.seatId
+							? `${s.name} ${s.surname} — reassigning seat ${existing.seatId}`
+							: `${s.name} ${s.surname} — select a seat`,
+					);
+					return;
+				}
+
+				playSound("success");
+				setFlashSignal({type: "success", id: ++flashIdRef.current});
+				toast.success(`Scanned: ${s.name} ${s.surname}`);
+				if (mode === "single") {
+					setLastAssignment(null);
+					setPhase("seating");
+					setActiveStudentId(s.id);
+					setScanned([s]);
+				} else {
+					setScanned([...prev, s]);
+				}
 			} catch {
+				playSound("error");
+				setFlashSignal({type: "error", id: ++flashIdRef.current});
 				toast.error("Lookup failed");
 			}
 		},
-		[mode],
+		[mode, playSound],
 	);
 
 	function removeScanned(id: string) {
@@ -143,6 +170,7 @@ export function ScanWorkflow({
 		});
 		const data = await res.json();
 		if (!res.ok) {
+			playSound("error");
 			toast.error(data.error ?? "Booking failed");
 			return false;
 		}
@@ -155,6 +183,7 @@ export function ScanWorkflow({
 						: s,
 			),
 		);
+		playSound("success");
 		toast.success(`${seatId} assigned`);
 		const idx = scanned.findIndex((s) => s.id === studentId);
 		if (idx >= 0 && idx + 1 < scanned.length) {
@@ -279,7 +308,7 @@ export function ScanWorkflow({
 									<CardTitle>Scan one student</CardTitle>
 								</CardHeader>
 								<CardContent className="flex flex-col items-center gap-3">
-									<QrScanner onScan={handleScan}/>
+									<QrScanner onScan={handleScan} flashSignal={flashSignal}/>
 									<p className="text-xs text-muted-foreground">
 										Hold the student&apos;s QR steady in the frame.
 									</p>
@@ -315,7 +344,7 @@ export function ScanWorkflow({
 									<CardTitle>Scan students</CardTitle>
 								</CardHeader>
 								<CardContent className="flex flex-col items-center gap-3">
-									<QrScanner onScan={handleScan}/>
+									<QrScanner onScan={handleScan} flashSignal={flashSignal}/>
 								</CardContent>
 							</Card>
 							<Card>

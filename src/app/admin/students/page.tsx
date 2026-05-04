@@ -1,6 +1,6 @@
 "use client";
 
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {toast} from "sonner";
 import {Trash2} from "lucide-react";
 import {Button} from "@/components/ui/button";
@@ -59,6 +59,7 @@ export default function StudentsPage() {
 	const [loading, setLoading] = useState(false);
 	const [filters, setFilters] = useState({q: "", class: "", seat: ""});
 	const [deleteTarget, setDeleteTarget] = useState<Student | null>(null);
+	const isMount = useRef(true);
 
 	async function load() {
 		setLoading(true);
@@ -75,6 +76,13 @@ export default function StudentsPage() {
 		load();
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
+
+	useEffect(() => {
+		if (isMount.current) { isMount.current = false; return; }
+		const t = setTimeout(() => load(), 400);
+		return () => clearTimeout(t);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [filters.q, filters.class]);
 
 	async function deleteStudent() {
 		if (!deleteTarget) return;
@@ -154,7 +162,6 @@ export default function StudentsPage() {
 							placeholder="Name, surname, or student ID"
 							value={filters.q}
 							onChange={(e) => setFilters({...filters, q: e.target.value})}
-							onKeyDown={(e) => e.key === "Enter" && load()}
 						/>
 					</div>
 					<div className="space-y-1">
@@ -164,7 +171,6 @@ export default function StudentsPage() {
 							maxLength={3}
 							value={filters.class}
 							onChange={(e) => setFilters({...filters, class: e.target.value})}
-							onKeyDown={(e) => e.key === "Enter" && load()}
 						/>
 					</div>
 					<div className="space-y-1">
