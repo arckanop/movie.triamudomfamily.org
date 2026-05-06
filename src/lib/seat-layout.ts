@@ -231,12 +231,12 @@ export const SEAT_LAYOUT = buildLayout();
 export const ROW_LABELS = SEAT_LAYOUT.rowLabels;
 
 export const SEAT_TYPE_COLORS: Record<SeatType, string> = {
-	normal: "#6366f1",
-	honeymoon: "#f43f5e",
-	privilege_plus: "#f97316",
-	privilege_normal: "#eab308",
+	normal: "#4ADE80",
+	honeymoon: "#F472B6",
+	privilege_plus: "#C084FC",
+	privilege_normal: "#6366F1",
 	vip: "#ec4899",
-	premium: "#dc2626",
+	premium: "#E879F9",
 	balcony: "#10b981",
 };
 

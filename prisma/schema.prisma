@@ -118,6 +118,12 @@ model Account {
   @@index([userId])
 }
 
+model SiteSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 model Verification {
   id         String   @id @default(uuid())
   identifier String

@@ -1,47 +1,33 @@
-import {createClient} from "@supabase/supabase-js";
+export type SeatBroadcastStatus = "AVAILABLE" | "BOOKED" | "BLOCKED";
 
-let cached: ReturnType<typeof createClient> | null = null;
-
-function getServerClient() {
-	if (cached) return cached;
+async function httpBroadcast(
+	messages: {topic: string; event: string; payload: object}[],
+) {
 	const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 	const key =
 		process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-	if (!url || !key) return null;
-	cached = createClient(url, key, {
-		auth: {persistSession: false},
-	});
-	return cached;
+	if (!url || !key) return;
+	try {
+		await fetch(`${url}/realtime/v1/api/broadcast`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				apikey: key,
+				Authorization: `Bearer ${key}`,
+			},
+			body: JSON.stringify({messages}),
+		});
+	} catch { /* non-fatal — realtime is best-effort */ }
 }
 
-export type SeatBroadcastStatus = "AVAILABLE" | "BOOKED" | "BLOCKED";
-
 export async function broadcastSeatUpdate(seat: string, status: SeatBroadcastStatus) {
-	const client = getServerClient();
-	if (!client) return;
-	const channel = client.channel("seats");
-	await channel.subscribe();
-	await channel.send({
-		type: "broadcast",
-		event: "seat-update",
-		payload: {seat, status},
-	});
-	await client.removeChannel(channel);
+	await httpBroadcast([{topic: "seats", event: "seat-update", payload: {seat, status}}]);
 }
 
 export async function broadcastSeatUpdates(
-	updates: { seat: string; status: SeatBroadcastStatus }[],
+	updates: {seat: string; status: SeatBroadcastStatus}[],
 ) {
-	const client = getServerClient();
-	if (!client) return;
-	const channel = client.channel("seats");
-	await channel.subscribe();
-	for (const u of updates) {
-		await channel.send({
-			type: "broadcast",
-			event: "seat-update",
-			payload: u,
-		});
-	}
-	await client.removeChannel(channel);
+	await httpBroadcast(
+		updates.map((u) => ({topic: "seats", event: "seat-update", payload: u})),
+	);
 }
