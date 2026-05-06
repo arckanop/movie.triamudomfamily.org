@@ -2,6 +2,13 @@
 
 import {useEffect, useId, useRef, useState, useCallback} from "react";
 
+type FlashType = "success" | "info" | "error";
+const FLASH_COLOR: Record<FlashType, string> = {
+	success: "rgba(34,197,94,0.38)",
+	info:    "rgba(251,191,36,0.38)",
+	error:   "rgba(239,68,68,0.38)",
+};
+
 type CameraDevice = {id: string; label: string};
 
 type Html5QrcodeCtor = {
@@ -20,10 +27,11 @@ type Html5QrcodeInstance = {
 	clear: () => void;
 };
 
-export function QrScanner({onScan, onError, paused}: {
+export function QrScanner({onScan, onError, paused, flashSignal}: {
 	onScan: (token: string) => void;
 	onError?: (msg: string) => void;
 	paused?: boolean;
+	flashSignal?: {type: FlashType; id: number} | null;
 }) {
 	const scannerRef = useRef<Html5QrcodeInstance | null>(null);
 	const isScanningRef = useRef(false);
@@ -32,6 +40,19 @@ export function QrScanner({onScan, onError, paused}: {
 	const onScanRef = useRef(onScan);
 	const onErrorRef = useRef(onError);
 	const CtorRef = useRef<Html5QrcodeCtor | null>(null);
+
+	const [overlayState, setOverlayState] = useState<{type: FlashType; key: number} | null>(null);
+	const overlayKeyRef = useRef(0);
+	const overlayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	useEffect(() => {
+		if (!flashSignal) return;
+		if (overlayTimer.current) clearTimeout(overlayTimer.current);
+		setOverlayState({type: flashSignal.type, key: ++overlayKeyRef.current});
+		overlayTimer.current = setTimeout(() => setOverlayState(null), 650);
+		return () => { if (overlayTimer.current) clearTimeout(overlayTimer.current); };
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [flashSignal?.id]);
 
 	const [cameras, setCameras] = useState<CameraDevice[]>([]);
 	const [activeCameraId, setActiveCameraId] = useState<string | null>(null);
@@ -187,6 +208,16 @@ export function QrScanner({onScan, onError, paused}: {
 				className="w-full rounded-lg overflow-hidden border bg-black"
 				style={{aspectRatio: "1 / 1"}}
 			/>
+			{overlayState && (
+				<div
+					key={overlayState.key}
+					className="pointer-events-none absolute inset-0 rounded-lg"
+					style={{
+						backgroundColor: FLASH_COLOR[overlayState.type],
+						animation: "scan-flash 0.65s ease-out forwards",
+					}}
+				/>
+			)}
 			{!started && (
 				<div className="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-zinc-900/95">
 					<button
@@ -235,8 +266,8 @@ export function QrScanner({onScan, onError, paused}: {
 					</button>
 
 					{showSettings && (
-						<div className="absolute right-0 top-9 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-[200px]">
-							<div className="px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+						<div className="absolute right-0 top-9 bg-zinc-900 rounded-lg shadow-lg border border-zinc-700 py-1 min-w-[200px]">
+							<div className="px-3 py-1.5 text-xs font-semibold text-zinc-500 uppercase tracking-wider border-b border-zinc-800">
 								Camera
 							</div>
 							{cameras.map((cam) => (
@@ -246,8 +277,8 @@ export function QrScanner({onScan, onError, paused}: {
 									onClick={() => handleCameraSelect(cam.id)}
 									className={`w-full text-left px-3 py-2 text-sm transition-colors truncate flex items-center gap-2 ${
 										activeCameraId === cam.id
-											? "bg-slate-100 text-slate-900 font-medium"
-											: "text-slate-700 hover:bg-slate-50"
+											? "bg-zinc-800 text-white font-medium"
+											: "text-zinc-300 hover:bg-zinc-800/60"
 									}`}
 								>
 									{activeCameraId === cam.id && (

@@ -1,7 +1,7 @@
 "use client";
 
 import {useEffect, useMemo, useRef, useState} from "react";
-import {Armchair} from "lucide-react";
+import {Armchair, Maximize2, Minimize2} from "lucide-react";
 import {ROW_LABELS, SEAT_LAYOUT, type SeatType} from "@/lib/seat-layout";
 import {getSupabaseClient, SEAT_CHANNEL, SEAT_EVENT} from "@/lib/supabase-client";
 import {cn} from "@/lib/utils";
@@ -41,7 +41,23 @@ export function SeatMap({
 	className,
 }: SeatMapProps) {
 	const [status, setStatus] = useState<SeatStatusMap>(initialStatus);
+	const [isFullscreen, setIsFullscreen] = useState(false);
 	const containerRef = useRef<HTMLDivElement | null>(null);
+
+	useEffect(() => {
+		const handler = () => setIsFullscreen(!!document.fullscreenElement);
+		document.addEventListener("fullscreenchange", handler);
+		return () => document.removeEventListener("fullscreenchange", handler);
+	}, []);
+
+	const toggleFullscreen = () => {
+		if (!containerRef.current) return;
+		if (document.fullscreenElement) {
+			document.exitFullscreen();
+		} else {
+			containerRef.current.requestFullscreen();
+		}
+	};
 
 	useEffect(() => {
 		setStatus((prev) => ({...prev, ...initialStatus}));
@@ -95,8 +111,19 @@ export function SeatMap({
 		<div className={cn("flex flex-col items-stretch gap-3", className)}>
 			<div
 				ref={containerRef}
-				className="seat-map-scroll relative w-full overflow-auto rounded-lg border bg-black/60 p-4"
+				className={cn(
+					"seat-map-scroll relative w-full overflow-auto rounded-lg border bg-black/60 p-4",
+					isFullscreen && "flex flex-col items-center justify-center h-full rounded-none border-0",
+				)}
 			>
+				<button
+					type="button"
+					onClick={toggleFullscreen}
+					title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+					className="absolute top-2 right-2 z-10 rounded-md p-1.5 text-zinc-400 hover:bg-white/10 hover:text-white transition-colors"
+				>
+					{isFullscreen ? <Minimize2 className="h-4 w-4"/> : <Maximize2 className="h-4 w-4"/>}
+				</button>
 				<div className="mb-2 text-[10px] uppercase tracking-[0.4em] text-zinc-500 text-center">
 					── Screen ──
 				</div>
@@ -145,7 +172,7 @@ export function SeatMap({
 								? TYPE_COLOR[s.type]
 								: seatStatus === "BOOKED"
 									? isOwned
-										? "#f59e0b"
+										? "var(--seat-scanned)"
 										: "var(--seat-booked)"
 									: "var(--seat-blocked)";
 						const strokeColor = isSelected ? "#ffffff" : NEUTRAL_STROKE;
@@ -176,7 +203,10 @@ export function SeatMap({
 										strokeWidth: isSelected ? 1.5 : 1,
 									}}
 								/>
-								<span className="absolute inset-x-0 bottom-[2px] text-center text-[7px] leading-none font-bold text-white/90 select-none pointer-events-none">
+								<span
+									className="absolute inset-x-0 bottom-[2px] text-center text-[7px] leading-none font-bold select-none pointer-events-none"
+									style={{color: seatStatus === "BLOCKED" ? TYPE_COLOR[s.type] : "rgba(255,255,255,0.9)"}}
+								>
 									{s.number}
 								</span>
 							</button>
@@ -201,7 +231,7 @@ export function SeatLegend() {
 			<LegendSeat fill="var(--seat-balcony)" stroke={NEUTRAL_STROKE} label="Balcony"/>
 			<span className="mx-1 h-3 w-px bg-border"/>
 			<LegendSeat fill="var(--seat-booked)" stroke={NEUTRAL_STROKE} label="Booked"/>
-			<LegendSeat fill="#f59e0b" stroke={NEUTRAL_STROKE} label="Scanned"/>
+			<LegendSeat fill="var(--seat-scanned)" stroke={NEUTRAL_STROKE} label="Scanned"/>
 			<LegendSeat fill="var(--seat-blocked)" stroke={NEUTRAL_STROKE} label="Blocked"/>
 		</div>
 	);

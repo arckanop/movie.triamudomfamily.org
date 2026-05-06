@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import {usePathname, useRouter} from "next/navigation";
-import {ArmchairIcon, ScanLine, Users, ClipboardList, LogOut, GraduationCap, LayoutDashboard} from "lucide-react";
+import {ArmchairIcon, ScanLine, Users, ClipboardList, LogOut, GraduationCap, LayoutDashboard, Settings} from "lucide-react";
 import {signOut} from "@/lib/auth-client";
 import {Button} from "@/components/ui/button";
 import {cn} from "@/lib/utils";
@@ -21,16 +21,19 @@ const ADMIN_NAV: NavItem[] = [
 	{href: "/admin/staff", label: "Staff", icon: Users},
 	{href: "/admin/students", label: "Students", icon: GraduationCap},
 	{href: "/admin/logs", label: "Logs", icon: ClipboardList},
+	{href: "/admin/settings", label: "Settings", icon: Settings},
 ];
 
 export function PortalShell({
 	                            role,
 	                            username,
 	                            children,
+	                            settingsSlot,
                             }: {
 	role: "STAFF" | "ADMIN";
 	username: string;
 	children: React.ReactNode;
+	settingsSlot?: React.ReactNode;
 }) {
 	const pathname = usePathname();
 	const router = useRouter();
@@ -67,6 +70,7 @@ export function PortalShell({
 				</nav>
 				<div className="flex shrink-0 items-center gap-3 text-sm">
 					<span className="text-muted-foreground hidden sm:inline">@{username}</span>
+					{settingsSlot}
 					<Button
 						variant="ghost"
 						size="sm"
